@@ -32,7 +32,8 @@ nothing changes for existing users unless they run `login --write`.
 - Every change is previewed and needs the user's confirmation: MCP
   elicitation when the client supports it (2025 and 2026-07-28 protocol
   versions), otherwise a single-use confirmation token bound to the exact
-  arguments.
+  arguments and to the exact request to send. `NETATMO_MCP_CONFIRM=elicitation`
+  accepts only confirmations shown by the client.
 - Limits: `NETATMO_MCP_MIN_TEMP` / `NETATMO_MCP_MAX_TEMP` (7–28 °C by
   default), `NETATMO_MCP_MAX_SETPOINT_HOURS` (24 h by default; manual
   setpoints last 3 h unless told otherwise). `NETATMO_MCP_WRITE=0` forces
@@ -40,6 +41,8 @@ nothing changes for existing users unless they run `login --write`.
 - Local audit log of applied and failed changes: `changes.log` in the
   configuration folder.
 - `status` and `doctor` report whether write mode is active.
+- Changes are always planned from fresh Netatmo data, and schedules that
+  Netatmo reports incompletely are refused rather than sent back partially.
 
 ### Changed
 
@@ -47,7 +50,9 @@ nothing changes for existing users unless they run `login --write`.
   the 2025 `initialize` handshake and the 2026-07-28 protocol version.
 - Write requests are never retried automatically. After a network error
   or a 5xx response, the result says the change may or may not have been
-  applied.
+  applied, and `changes.log` records the outcome as `unknown`.
+- A token refresh without a `scope` field keeps the scope granted at
+  login.
 - `docs/tools.md` now documents the write-mode tools.
 
 ### Documentation

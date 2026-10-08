@@ -7,7 +7,7 @@
  * The MCP layer only calls `apply()` after the user has confirmed.
  */
 import type { WriteLimits } from '../config/loader.js';
-import { InvalidArgumentError } from '../errors.js';
+import { AppError, InvalidArgumentError } from '../errors.js';
 import type { NetatmoClient } from '../netatmo/client.js';
 import type { WriteEndpoint } from '../netatmo/write-endpoints.js';
 import { systemClock, type Clock } from '../utils/clock.js';
@@ -41,6 +41,19 @@ export interface ChangePlan {
 }
 
 const MAX_MODE_C = 30;
+
+/** Errors that prove the change was not applied (refused locally or by a Netatmo 4xx). */
+const NOT_APPLIED_CODES = new Set([
+  'AUTH_REQUIRED',
+  'PERMISSION_DENIED',
+  'RATE_LIMITED',
+  'NOT_FOUND',
+  'INVALID_ARGUMENT',
+  'UNSUPPORTED_CAPABILITY',
+]);
+function rejectedBeforeApplying(error: unknown): boolean {
+  return error instanceof AppError && NOT_APPLIED_CODES.has(error.code);
+}
 const MODE_LABEL: Record<string, string> = {
   schedule: 'schedule',
   away: 'away',
@@ -83,7 +96,7 @@ export class ControlService {
     },
     opts: CallOptions = {},
   ): Promise<ChangePlan> {
-    const home = await this.home(input.home_id, opts);
+    const home = await this.freshHome(input.home_id, opts);
     const tz = zone(home);
     const room = findRoom(home, {
       ...(input.room_id !== undefined && { roomId: input.room_id }),
@@ -158,7 +171,7 @@ export class ControlService {
     },
     opts: CallOptions = {},
   ): Promise<ChangePlan> {
-    const home = await this.home(input.home_id, opts);
+    const home = await this.freshHome(input.home_id, opts);
     const tz = zone(home);
     const apiMode = input.mode === 'frost_guard' ? 'hg' : input.mode;
     const warnings: string[] = [];
@@ -209,7 +222,7 @@ export class ControlService {
     },
     opts: CallOptions = {},
   ): Promise<ChangePlan> {
-    const home = await this.home(input.home_id, opts);
+    const home = await this.freshHome(input.home_id, opts);
     if (!input.schedule_id && !input.schedule_name) {
       throw new InvalidArgumentError('Specify schedule_id or schedule_name.');
     }
@@ -241,7 +254,7 @@ export class ControlService {
     },
     opts: CallOptions = {},
   ): Promise<ChangePlan> {
-    const home = await this.home(input.home_id, opts);
+    const home = await this.freshHome(input.home_id, opts);
     const base = findSchedule(home, {
       schedule_id: input.based_on_schedule_id,
       schedule_name: input.based_on_schedule_name,
@@ -273,7 +286,7 @@ export class ControlService {
     },
     opts: CallOptions = {},
   ): Promise<ChangePlan> {
-    const home = await this.home(input.home_id, opts);
+    const home = await this.freshHome(input.home_id, opts);
     const base = findSchedule(home, input);
     const updated = applySchedulePatch(base, home, input, this.limits);
     const changes = describeScheduleChanges(base, updated, home);
@@ -287,7 +300,11 @@ export class ControlService {
         ? ['This is the active schedule: changes take effect immediately.']
         : [],
       endpoint: 'synchomeschedule',
-      request: { home_id: home.id, schedule_id: base.id, name: updated.name ?? base.name ?? '' },
+      request: {
+        home_id: home.id,
+        schedule_id: base.id,
+        ...(updated.name ? { name: updated.name } : {}),
+      },
       body: toApiSchedule(updated),
     });
   }
@@ -301,7 +318,7 @@ export class ControlService {
     },
     opts: CallOptions = {},
   ): Promise<ChangePlan> {
-    const home = await this.home(input.home_id, opts);
+    const home = await this.freshHome(input.home_id, opts);
     const s = findSchedule(home, input);
     const name = input.new_name.trim();
     if (name === '' || name.length > 64)
@@ -320,6 +337,15 @@ export class ControlService {
 
   private async home(homeId: string | undefined, opts: CallOptions): Promise<Home> {
     return selectHome(toHomes((await this.client.homesData({}, opts)).body), homeId);
+  }
+
+  /**
+   * Plans are always built from fresh data: schedule writes send the whole schedule back, so a
+   * cached copy could silently revert a change made meanwhile in the Netatmo app.
+   */
+  private async freshHome(homeId: string | undefined, opts: CallOptions): Promise<Home> {
+    this.client.clearCache();
+    return this.home(homeId, opts);
   }
 
   private checkTemp(t: number): void {
@@ -382,7 +408,7 @@ export class ControlService {
             time,
             action: p.action,
             params: p.request,
-            outcome: 'failed',
+            outcome: rejectedBeforeApplying(error) ? 'failed' : 'unknown',
             error: error instanceof Error ? error.message : String(error),
           });
           throw error;

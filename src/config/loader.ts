@@ -14,6 +14,8 @@ export interface AppConfig {
   logLevel: LogLevel;
   /** "off" when NETATMO_MCP_WRITE=0; otherwise write mode follows the granted token scope. */
   write: 'auto' | 'off';
+  /** How changes are confirmed: 'auto' (elicitation, else a preview token) or 'elicitation' only. */
+  confirm: 'auto' | 'elicitation';
   limits: WriteLimits;
 }
 
@@ -43,6 +45,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     redirectUri: e.NETATMO_REDIRECT_URI ?? DEFAULT_REDIRECT_URI,
     logLevel: e.NETATMO_MCP_LOG_LEVEL ?? 'info',
     write: e.NETATMO_MCP_WRITE === '0' ? 'off' : 'auto',
+    confirm: e.NETATMO_MCP_CONFIRM ?? 'auto',
     limits: writeLimits(e),
   };
 }

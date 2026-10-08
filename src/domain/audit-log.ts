@@ -5,7 +5,8 @@ export interface AuditEntry {
   time: string;
   action: string;
   params: Record<string, unknown>;
-  outcome: 'applied' | 'failed';
+  /** "unknown": no clear answer from Netatmo (network error, 5xx, cancelled after sending). */
+  outcome: 'applied' | 'failed' | 'unknown';
   error?: string;
 }
 

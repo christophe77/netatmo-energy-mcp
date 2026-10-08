@@ -279,7 +279,16 @@ export class NetatmoClient {
             { hint: 'Check the current status before trying again.', cause: error },
           );
         }
-        const text = await res.text();
+        let text: string;
+        try {
+          text = await res.text();
+        } catch (error) {
+          if (signal?.aborted) throw signal.reason;
+          throw new NetatmoUnavailableError(
+            `The ${endpoint} response could not be read; the change may or may not have been applied.`,
+            { hint: 'Check the current status before trying again.', cause: error },
+          );
+        }
         let body: unknown;
         try {
           body = text === '' ? undefined : JSON.parse(text);
@@ -288,8 +297,11 @@ export class NetatmoClient {
         }
         if (res.ok) {
           const status = (body as { status?: unknown } | undefined)?.status;
-          if (status !== undefined && status !== 'ok') {
-            throw new InvalidResponseError(`Netatmo did not confirm the ${endpoint} request.`);
+          if (status !== 'ok') {
+            throw new InvalidResponseError(
+              `Netatmo did not confirm the ${endpoint} request; the change may or may not have been applied.`,
+              { hint: 'Check the current status before trying again.' },
+            );
           }
           return body;
         }

@@ -137,6 +137,21 @@ describe('schedules', () => {
     ).toThrow(/same time/);
   });
 
+  it('refuses to rewrite a schedule whose data from Netatmo is incomplete', () => {
+    const h = home();
+    const base = findSchedule(h);
+    const noRooms = {
+      ...base,
+      zones: base.zones.map((z, i) => (i === 0 ? { ...z, rooms: [] } : z)),
+    };
+    expect(() => applySchedulePatch(noRooms, h, { away_temperature: 15 }, limits)).toThrow(
+      /cannot be edited safely/,
+    );
+    expect(() =>
+      applySchedulePatch({ ...base, frostGuardTempC: null }, h, { away_temperature: 15 }, limits),
+    ).toThrow(/cannot be edited safely/);
+  });
+
   it('builds the Netatmo request body with every zone and room', () => {
     const body = toApiSchedule(findSchedule(home()));
     expect(body).toMatchObject({ away_temp: 14, hg_temp: 7 });

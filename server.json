@@ -41,6 +41,12 @@
           "isSecret": false
         },
         {
+          "name": "NETATMO_MCP_CONFIRM",
+          "description": "Write mode: 'elicitation' only accepts confirmations shown by the MCP client (default 'auto').",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
           "name": "NETATMO_MCP_MIN_TEMP",
           "description": "Write mode: lowest temperature a change may set, in °C (default 7).",
           "isRequired": false,

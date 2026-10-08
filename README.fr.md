@@ -273,7 +273,10 @@ Garde-fous :
   l'élicitation MCP vous le demandent directement. Avec les autres, le
   premier appel ne renvoie qu'un aperçu et un jeton à usage unique ;
   l'assistant doit vous montrer l'aperçu et obtenir votre accord avant de
-  rappeler l'outil. Rien n'est envoyé à Netatmo avant.
+  rappeler l'outil. Rien n'est envoyé à Netatmo avant. Ce second mode
+  repose sur le respect de ses consignes par l'assistant ; avec
+  `NETATMO_MCP_CONFIRM=elicitation`, seules les confirmations affichées
+  par votre client sont acceptées.
 - **Limites.** Les températures doivent rester entre 7 et 28 °C. Les
   consignes manuelles se terminent après 3 h par défaut, 24 h au plus.
   Modifiables avec `NETATMO_MCP_MIN_TEMP`, `NETATMO_MCP_MAX_TEMP` et

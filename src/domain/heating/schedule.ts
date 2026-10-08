@@ -6,7 +6,7 @@
  * setpoint per room. Schedules are always edited by patching an existing schedule so that
  * Netatmo's zone IDs/types are preserved and every heated room stays present.
  */
-import { InvalidArgumentError, NotFoundError } from '../../errors.js';
+import { InvalidArgumentError, NotFoundError, UnsupportedCapabilityError } from '../../errors.js';
 import {
   findRoom,
   foldName,
@@ -174,6 +174,21 @@ export function applySchedulePatch(
 /** Structural checks before sending a schedule to Netatmo. */
 export function validateSchedule(s: Schedule): void {
   if (s.zones.length === 0) throw new InvalidArgumentError('A schedule needs at least one zone.');
+  // The whole schedule is sent back to Netatmo: refuse rather than send incomplete data that
+  // would wipe values (e.g. a zone whose room setpoints Netatmo reported in another format).
+  const incomplete = (what: string) =>
+    new UnsupportedCapabilityError(
+      `This schedule cannot be edited safely through the API: ${what}. Nothing was changed.`,
+      { hint: 'Edit this schedule in the Netatmo app.' },
+    );
+  if (s.awayTempC === null || s.frostGuardTempC === null) {
+    throw incomplete('Netatmo did not report its away and frost-guard temperatures');
+  }
+  for (const z of s.zones) {
+    if (z.rooms.length === 0 || z.rooms.some((r) => r.setpointC === null)) {
+      throw incomplete(`zone "${z.name ?? z.id}" has no setpoint for some rooms`);
+    }
+  }
   const ids = new Set(s.zones.map((z) => z.id));
   const tt = s.timetable;
   if (tt.length === 0) throw new InvalidArgumentError('The timetable is empty.');

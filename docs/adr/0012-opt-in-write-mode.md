@@ -48,6 +48,16 @@ Writing to a physical heating system raises the stakes:
      and expiring after 5 minutes. A second call with the token applies
      the change. The tool description instructs the assistant to obtain
      the user's explicit agreement first.
+   - Every confirmation (token, or the 2026-07-28 `requestState`) is
+     also bound to a digest of the exact request that will be sent. If
+     the heating data changed between preview and confirmation, the
+     confirmation is rejected and nothing is sent.
+   - **Limitation.** The token flow cannot prove that a human agreed: the
+     model itself can call twice. It protects against accidental and
+     silently changed writes, not against a model that ignores its
+     instructions. `NETATMO_MCP_CONFIRM=elicitation` refuses changes
+     unless the client can ask the user itself. Names from Netatmo are
+     stripped of control characters in previews.
 3. **Limits** are configurable through environment variables:
    - Temperatures between **7 and 28 °C**
      (`NETATMO_MCP_MIN_TEMP` / `NETATMO_MCP_MAX_TEMP`), for setpoints
@@ -59,11 +69,14 @@ Writing to a physical heating system raises the stakes:
    maintainer), except `setstate`. They are marked **experimental** in
    tool descriptions until validated live.
 5. **Schedules are edited by patching an existing schedule.** Creation
-   clones a base schedule, the active one by default. Updates fetch the
-   current schedule. Both then apply the requested changes and send a
+   clones a base schedule, the active one by default. Plans are built
+   from fresh data (caches are bypassed), so an edit made in the Netatmo
+   app is never reverted by a stale copy. Both then apply the requested changes and send a
    complete, validated schedule. Netatmo's zone ID and type conventions
    are thereby preserved, every heated room is always present, and the
-   timetable must start at Monday 00:00.
+   timetable must start at Monday 00:00. A schedule whose data from
+   Netatmo is incomplete (a zone without room setpoints, missing away or
+   frost-guard temperatures) is refused rather than sent back partially.
 6. **Safety in the client.**
    - Write endpoints live in a separate allow-list. The client refuses
      them unless constructed with `allowWrites`.
@@ -71,9 +84,10 @@ Writing to a physical heating system raises the stakes:
      responses, because the outcome is unknown. They are retried once
      only when the token was rejected before execution.
    - Caches are cleared after every write.
-7. **Audit log.** Every applied change is appended to
+7. **Audit log.** Every attempted change is appended to
    `<config folder>/changes.log` (JSON Lines: time, action, parameters,
-   result). It stays local.
+   outcome `applied`, `failed` or `unknown` when Netatmo gave no clear
+   answer). It stays local.
 
 ## Consequences
 

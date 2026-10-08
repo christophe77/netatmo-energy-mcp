@@ -365,6 +365,6 @@ describe('write failures', () => {
     );
     expect(writes).toHaveLength(1);
     const log = await fs.readFile(path.join(config.paths.dir, 'changes.log'), 'utf8');
-    expect(JSON.parse(log.trim())).toMatchObject({ outcome: 'failed' });
+    expect(JSON.parse(log.trim())).toMatchObject({ outcome: 'unknown' });
   });
 });

@@ -29,6 +29,8 @@ export interface McpServerOptions {
   control: ControlService;
   /** Register heating control tools (opt-in write mode, ADR-0012). */
   writeMode: boolean;
+  /** Refuse changes when the client has no elicitation (NETATMO_MCP_CONFIRM=elicitation). */
+  requireElicitation?: boolean;
 }
 
 /** Build the MCP server around the application services. Transport-agnostic. */
@@ -44,7 +46,11 @@ export function createMcpServer(
   );
   registerTools(server, service, analytics, logger);
   registerScheduleReadTool(server, options.control, logger);
-  if (options.writeMode) registerWriteTools(server, options.control, logger);
+  if (options.writeMode) {
+    registerWriteTools(server, options.control, logger, {
+      requireElicitation: options.requireElicitation ?? false,
+    });
+  }
   registerResources(server, service);
   registerPrompts(server);
   return server;

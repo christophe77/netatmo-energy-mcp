@@ -84,4 +84,17 @@ describe('read-only by default', () => {
     ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' });
     expect(f.requests).toHaveLength(0);
   });
+
+  it('treats a write response without status "ok" as an uncertain outcome', async () => {
+    for (const reply of [() => json({}), () => new Response('', { status: 200 })]) {
+      const client = new NetatmoClient({
+        tokens: new FakeTokens(),
+        fetch: fakeFetch(reply),
+        allowWrites: true,
+      });
+      await expect(client.write('setthermmode', { home_id: 'h', mode: 'away' })).rejects.toThrow(
+        /may or may not have been applied/,
+      );
+    }
+  });
 });

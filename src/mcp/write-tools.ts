@@ -136,8 +136,14 @@ export function registerWriteTools(
   server: McpServer,
   control: ControlService,
   logger: Logger,
+  options: { requireElicitation?: boolean } = {},
 ): void {
-  const c: ConfirmContext = { server, tokens: new ConfirmationTokens(), logger };
+  const c: ConfirmContext = {
+    server,
+    tokens: new ConfirmationTokens(),
+    logger,
+    requireElicitation: options.requireElicitation ?? false,
+  };
   const signalOf = (ctx: { mcpReq: { signal: AbortSignal } }) => ({ signal: ctx.mcpReq.signal });
 
   server.registerTool(
