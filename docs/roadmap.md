@@ -46,7 +46,7 @@ Focus: reliable data access.
 ## v0.6: Thermal digital twin integration
 
 - Export a room/thermal model that external digital-twin tools can consume
-- Integration points with the sibling *Thermal Twin* project
+- Integration points with the sibling _Thermal Twin_ project
 
 ## v1.0: Stable public interface
 

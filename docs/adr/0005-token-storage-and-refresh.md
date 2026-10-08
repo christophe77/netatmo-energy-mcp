@@ -45,7 +45,7 @@ alternatives add native build risk on three operating systems.
 - **Windows permissions.** POSIX modes do nothing on NTFS. When the
   config directory is created on Windows, the server applies
   `icacls <dir> /inheritance:r /grant:r *<user-SID>:(OI)(CI)F
-  *S-1-5-18:(OI)(CI)F`, which restricts access to the current user and
+*S-1-5-18:(OI)(CI)F`, which restricts access to the current user and
   SYSTEM. Files created inside inherit that ACL. The SID is read with
   `whoami /user`, and no shell is involved. This is best effort: if it
   fails, a warning is logged and `doctor` reports it. The directory
@@ -68,6 +68,7 @@ alternatives add native build risk on three operating systems.
   If the write itself fails (disk full, file locked), the new pair is
   kept in memory for the current process, the write is retried and the
   failure is logged.
+
 - **Credential replacement.** `login` replaces the client credentials
   and tokens through the same atomic write. On Windows, `rename`
   can fail transiently with `EPERM`/`EBUSY` when another process

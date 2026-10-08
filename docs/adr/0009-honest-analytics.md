@@ -27,8 +27,8 @@ misread:
   device fault or claim a cause.
 - No energy, cost or CO₂ figures are produced from data that does not
   measure them.
-- Prompts instruct the assistant to separate *Observed data*, *Derived
-  metrics*, *Hypotheses* and *Recommendations*.
+- Prompts instruct the assistant to separate _Observed data_, _Derived
+  metrics_, _Hypotheses_ and _Recommendations_.
 
 ## Consequences
 

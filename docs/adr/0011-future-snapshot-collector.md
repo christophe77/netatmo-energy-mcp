@@ -22,14 +22,15 @@ that a collector can be added later without refactoring:
 1. **`HomeSnapshot` domain type.** `homestatus` is normalised into a
    timestamped, self-describing snapshot:
 
-   | Part | Fields |
-   |---|---|
-   | Snapshot | `observedAt`, `homeId` |
-   | Each room | temperature, setpoint, setpoint mode, heating demand %, open window, reachable |
-   | Each module | type, boiler status, battery, signal, reachable |
+   | Part        | Fields                                                                         |
+   | ----------- | ------------------------------------------------------------------------------ |
+   | Snapshot    | `observedAt`, `homeId`                                                         |
+   | Each room   | temperature, setpoint, setpoint mode, heating demand %, open window, reachable |
+   | Each module | type, boiler status, battery, signal, reachable                                |
 
    The MCP status tools use it. The collector would persist the same
    type.
+
 2. **The `NetatmoClient` interface and the rate limiter are shared
    services.** The limiter takes its budget as configuration. A
    collector would get a separate, smaller budget so it can never starve

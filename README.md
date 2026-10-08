@@ -75,16 +75,16 @@ Design decisions are recorded as [ADRs](docs/adr/README.md).
 
 ## Development status
 
-| Phase | Scope | Status |
-|---|---|---|
-| 0 | Research, architecture, ADRs | Done |
-| 1 | Project foundation (TypeScript, tests, config) | In progress |
-| 2 | OAuth2 login and token storage | Planned |
-| 3 | Netatmo API client | Planned |
-| — | Live API validation on a real installation | Planned |
-| 4 | MCP tools, resources and prompts | Planned |
-| 5 | Heating analytics | Planned |
-| 6–8 | Quality, documentation, release preparation | Planned |
+| Phase | Scope                                          | Status      |
+| ----- | ---------------------------------------------- | ----------- |
+| 0     | Research, architecture, ADRs                   | Done        |
+| 1     | Project foundation (TypeScript, tests, config) | In progress |
+| 2     | OAuth2 login and token storage                 | Planned     |
+| 3     | Netatmo API client                             | Planned     |
+| —     | Live API validation on a real installation     | Planned     |
+| 4     | MCP tools, resources and prompts               | Planned     |
+| 5     | Heating analytics                              | Planned     |
+| 6–8   | Quality, documentation, release preparation    | Planned     |
 
 The first release will be **v0.1.0**. It will be announced in this
 repository's Releases once it has been tested against a real Netatmo

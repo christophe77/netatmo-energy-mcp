@@ -16,15 +16,15 @@ Node ≥ 22 provides `fetch`, `AbortSignal.timeout`, `util.parseArgs`,
 Runtime dependencies are limited to `@modelcontextprotocol/server` and
 `zod`. Everything else is built in-house on Node built-ins:
 
-| Need | Implementation |
-|---|---|
-| HTTP | `fetch` |
-| CLI args | `util.parseArgs` |
-| Prompts in `login` | `readline/promises` (secret input not echoed) |
-| Opening the browser | `child_process.spawn` (`cmd /c start`, `open`, `xdg-open`) |
-| Logging | ~50-line stderr logger with level filter and key-based redaction |
-| Time zones | `Intl.DateTimeFormat` |
-| Config dir | ~20-line resolver (`APPDATA`, `XDG_CONFIG_HOME`, macOS path) |
+| Need                | Implementation                                                   |
+| ------------------- | ---------------------------------------------------------------- |
+| HTTP                | `fetch`                                                          |
+| CLI args            | `util.parseArgs`                                                 |
+| Prompts in `login`  | `readline/promises` (secret input not echoed)                    |
+| Opening the browser | `child_process.spawn` (`cmd /c start`, `open`, `xdg-open`)       |
+| Logging             | ~50-line stderr logger with level filter and key-based redaction |
+| Time zones          | `Intl.DateTimeFormat`                                            |
+| Config dir          | ~20-line resolver (`APPDATA`, `XDG_CONFIG_HOME`, macOS path)     |
 
 Adding a runtime dependency requires a short justification in the PR.
 
