@@ -7,14 +7,6 @@ minor versions may contain breaking changes; they are always listed.
 
 ## [Unreleased]
 
-### Fixed
-
-- `netatmo_set_room_setpoint` with `duration_minutes` could never be
-  confirmed through the preview + token flow: the end time was recomputed
-  from the confirmation time, so it never matched the preview. A duration
-  now counts from the preview, and the confirmed change is the one that was
-  shown. A setpoint whose confirmed end time has already passed is refused.
-
 ## [0.2.0] - 2026-10-08
 
 Schedules and opt-in heating control. Read-only remains the default:
