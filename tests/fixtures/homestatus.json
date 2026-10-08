@@ -1,0 +1,65 @@
+{
+  "status": "ok",
+  "time_server": 1767225600,
+  "body": {
+    "home": {
+      "id": "000000000000000000000001",
+      "rooms": [
+        {
+          "id": "1000000001",
+          "reachable": true,
+          "anticipating": false,
+          "heating_power_request": 0,
+          "open_window": false,
+          "therm_measured_temperature": 20.4,
+          "therm_setpoint_temperature": 20,
+          "therm_setpoint_start_time": 1767222000,
+          "therm_setpoint_end_time": 1767229200,
+          "therm_setpoint_mode": "schedule"
+        },
+        {
+          "id": "1000000002",
+          "reachable": true,
+          "anticipating": false,
+          "heating_power_request": 45,
+          "open_windows": true,
+          "therm_measured_temperature": 17.1,
+          "therm_setpoint_temperature": 19,
+          "therm_setpoint_mode": "manual"
+        },
+        { "id": "1000000003", "reachable": false }
+      ],
+      "modules": [
+        {
+          "id": "70:ee:50:00:00:01",
+          "type": "NAPlug",
+          "firmware_revision": 222,
+          "wifi_strength": 61
+        },
+        {
+          "id": "70:ee:50:00:00:02",
+          "type": "NATherm1",
+          "reachable": true,
+          "firmware_revision": 75,
+          "rf_strength": 70,
+          "boiler_status": true,
+          "boiler_valve_comfort_boost": false,
+          "battery_state": "high",
+          "battery_level": 4100,
+          "bridge": "70:ee:50:00:00:01",
+          "anticipating": false
+        },
+        {
+          "id": "70:ee:50:00:00:03",
+          "type": "NRV",
+          "reachable": true,
+          "firmware_revision": 100,
+          "rf_strenght": 82,
+          "battery_state": "medium",
+          "bridge": "70:ee:50:00:00:01"
+        }
+      ]
+    },
+    "errors": [{ "id": "70:ee:50:00:00:05", "code": 6 }]
+  }
+}

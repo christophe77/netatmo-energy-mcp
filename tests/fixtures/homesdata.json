@@ -1,0 +1,118 @@
+{
+  "body": {
+    "homes": [
+      {
+        "id": "000000000000000000000001",
+        "name": "Test Home",
+        "altitude": 42,
+        "coordinates": [2.0, 48.0],
+        "country": "FR",
+        "timezone": "Europe/Paris",
+        "temperature_control_mode": "heating",
+        "therm_mode": "schedule",
+        "therm_setpoint_default_duration": 180,
+        "rooms": [
+          {
+            "id": "1000000001",
+            "name": "Séjour",
+            "type": "livingroom",
+            "module_ids": ["70:ee:50:00:00:02", "70:ee:50:00:00:03"]
+          },
+          {
+            "id": 1000000002,
+            "name": "Chambre parents",
+            "type": "bedroom",
+            "module_ids": ["70:ee:50:00:00:04"]
+          },
+          {
+            "id": "1000000003",
+            "name": "Chambre enfant",
+            "type": "bedroom",
+            "module_ids": ["70:ee:50:00:00:05"]
+          },
+          { "id": "1000000004", "name": "Bureau", "type": "office" }
+        ],
+        "modules": [
+          {
+            "id": "70:ee:50:00:00:01",
+            "type": "NAPlug",
+            "name": "Relais",
+            "setup_date": 1600000000,
+            "modules_bridged": [
+              "70:ee:50:00:00:02",
+              "70:ee:50:00:00:03",
+              "70:ee:50:00:00:04",
+              "70:ee:50:00:00:05",
+              "70:ee:50:00:00:06"
+            ]
+          },
+          {
+            "id": "70:ee:50:00:00:02",
+            "type": "NATherm1",
+            "name": "Thermostat",
+            "setup_date": 1600000100,
+            "room_id": "1000000001",
+            "bridge": "70:ee:50:00:00:01"
+          },
+          {
+            "id": "70:ee:50:00:00:03",
+            "type": "NRV",
+            "name": "Vanne séjour",
+            "room_id": "1000000001",
+            "bridge": "70:ee:50:00:00:01"
+          },
+          {
+            "id": "70:ee:50:00:00:04",
+            "type": "NRV",
+            "name": "Vanne parents",
+            "room_id": "1000000002",
+            "bridge": "70:ee:50:00:00:01"
+          },
+          {
+            "id": "70:ee:50:00:00:05",
+            "type": "NRV",
+            "name": "Vanne enfant",
+            "room_id": "1000000003",
+            "bridge": "70:ee:50:00:00:01"
+          },
+          {
+            "id": "70:ee:50:00:00:06",
+            "type": "NRV",
+            "name": "Vanne bureau",
+            "room_id": "1000000004",
+            "bridge": "70:ee:50:00:00:01"
+          }
+        ],
+        "schedules": [
+          {
+            "id": "000000000000000000000101",
+            "name": "Hiver",
+            "type": "therm",
+            "default": false,
+            "selected": true,
+            "away_temp": 14,
+            "hg_temp": 7,
+            "timetable": [{ "zone_id": 0, "m_offset": 0 }],
+            "zones": [
+              {
+                "id": 0,
+                "name": "Confort",
+                "type": 0,
+                "rooms": [{ "id": "1000000001", "therm_setpoint_temperature": 20 }]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "user": {
+      "email": "someone@example.com",
+      "language": "fr-FR",
+      "locale": "fr-FR",
+      "id": "000000000000000000000999"
+    }
+  },
+  "status": "ok",
+  "time_exec": 0.05,
+  "time_server": 1767225600
+}
