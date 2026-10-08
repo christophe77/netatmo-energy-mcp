@@ -20,6 +20,7 @@ import {
   type ServerContext,
 } from '@modelcontextprotocol/server';
 import * as z from 'zod';
+import type { ConfirmMode } from '../config/loader.js';
 import type { ChangePlan } from '../domain/control-service.js';
 import { InvalidArgumentError, UnsupportedCapabilityError } from '../errors.js';
 import type { Logger } from '../utils/logger.js';
@@ -132,8 +133,8 @@ export interface ConfirmContext {
   server: McpServer;
   tokens: ConfirmationTokens;
   logger: Logger;
-  /** NETATMO_MCP_CONFIRM=elicitation: refuse changes when the client cannot ask the user. */
-  requireElicitation?: boolean;
+  /** NETATMO_MCP_CONFIRM (default 'auto'). */
+  mode?: ConfirmMode;
 }
 
 /**
@@ -162,7 +163,8 @@ export async function confirmAndApply(
     ) as { elicitation?: unknown } | undefined;
 
     const key = planKey(tool, args, plan);
-    if (caps?.elicitation !== undefined && args.confirmation_token === undefined) {
+    const useDialog = caps?.elicitation !== undefined && c.mode !== 'token';
+    if (useDialog && args.confirmation_token === undefined) {
       if (modern) {
         const responses = ctx.mcpReq.inputResponses;
         if (responses && 'confirm' in responses) {
@@ -201,11 +203,11 @@ export async function confirmAndApply(
       return answer === 'accepted' ? await applyPlan() : cancelled(plan, answer);
     }
 
-    if (c.requireElicitation) {
+    if (c.mode === 'elicitation') {
       throw new UnsupportedCapabilityError(
         'This MCP client cannot ask you to confirm changes (no elicitation support), and NETATMO_MCP_CONFIRM=elicitation requires it. Nothing was modified.',
         {
-          hint: 'Use a client that supports MCP elicitation, or remove NETATMO_MCP_CONFIRM to allow confirmation through the assistant.',
+          hint: 'Use a client that supports MCP elicitation, or set NETATMO_MCP_CONFIRM=auto to allow confirmation through the assistant.',
         },
       );
     }

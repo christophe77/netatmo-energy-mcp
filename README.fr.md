@@ -276,7 +276,8 @@ Garde-fous :
   rappeler l'outil. Rien n'est envoyé à Netatmo avant. Ce second mode
   repose sur le respect de ses consignes par l'assistant ; avec
   `NETATMO_MCP_CONFIRM=elicitation`, seules les confirmations affichées
-  par votre client sont acceptées.
+  par votre client sont acceptées. Si votre client annule chaque
+  modification sans rien afficher, utilisez `NETATMO_MCP_CONFIRM=token`.
 - **Limites.** Les températures doivent rester entre 7 et 28 °C. Les
   consignes manuelles se terminent après 3 h par défaut, 24 h au plus.
   Modifiables avec `NETATMO_MCP_MIN_TEMP`, `NETATMO_MCP_MAX_TEMP` et

@@ -15,9 +15,16 @@ export interface AppConfig {
   /** "off" when NETATMO_MCP_WRITE=0; otherwise write mode follows the granted token scope. */
   write: 'auto' | 'off';
   /** How changes are confirmed: 'auto' (elicitation, else a preview token) or 'elicitation' only. */
-  confirm: 'auto' | 'elicitation';
+  confirm: ConfirmMode;
   limits: WriteLimits;
 }
+
+/**
+ * How changes are confirmed: 'auto' (the client's dialog when it has one, else preview + token),
+ * 'elicitation' (the client's dialog only), 'token' (preview + token only, for clients that
+ * advertise elicitation without showing it).
+ */
+export type ConfirmMode = 'auto' | 'elicitation' | 'token';
 
 export interface WriteLimits {
   minTemp: number;

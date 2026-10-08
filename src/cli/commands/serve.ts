@@ -25,7 +25,7 @@ export const serveCommand: Command = {
         createMcpServer(runtime.service, runtime.analytics, logger, {
           control: runtime.control,
           writeMode,
-          requireElicitation: config.confirm === 'elicitation',
+          confirmMode: config.confirm,
         }),
       {
         onerror: (error) => {

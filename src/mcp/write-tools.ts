@@ -1,5 +1,6 @@
 import type { McpServer, ToolAnnotations } from '@modelcontextprotocol/server';
 import * as z from 'zod';
+import type { ConfirmMode } from '../config/loader.js';
 import type { ControlService } from '../domain/control-service.js';
 import { DAYS } from '../domain/heating/schedule.js';
 import { homeRefSchema } from '../domain/views.js';
@@ -136,13 +137,13 @@ export function registerWriteTools(
   server: McpServer,
   control: ControlService,
   logger: Logger,
-  options: { requireElicitation?: boolean } = {},
+  options: { confirmMode?: ConfirmMode } = {},
 ): void {
   const c: ConfirmContext = {
     server,
     tokens: new ConfirmationTokens(),
     logger,
-    requireElicitation: options.requireElicitation ?? false,
+    mode: options.confirmMode ?? 'auto',
   };
   const signalOf = (ctx: { mcpReq: { signal: AbortSignal } }) => ({ signal: ctx.mcpReq.signal });
 

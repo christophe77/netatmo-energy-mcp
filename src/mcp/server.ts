@@ -1,4 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/server';
+import type { ConfirmMode } from '../config/loader.js';
 import type { AnalyticsService } from '../domain/analytics-service.js';
 import type { ControlService } from '../domain/control-service.js';
 import type { EnergyService } from '../domain/energy-service.js';
@@ -29,8 +30,8 @@ export interface McpServerOptions {
   control: ControlService;
   /** Register heating control tools (opt-in write mode, ADR-0012). */
   writeMode: boolean;
-  /** Refuse changes when the client has no elicitation (NETATMO_MCP_CONFIRM=elicitation). */
-  requireElicitation?: boolean;
+  /** How changes are confirmed (NETATMO_MCP_CONFIRM). */
+  confirmMode?: ConfirmMode;
 }
 
 /** Build the MCP server around the application services. Transport-agnostic. */
@@ -48,7 +49,7 @@ export function createMcpServer(
   registerScheduleReadTool(server, options.control, logger);
   if (options.writeMode) {
     registerWriteTools(server, options.control, logger, {
-      requireElicitation: options.requireElicitation ?? false,
+      confirmMode: options.confirmMode ?? 'auto',
     });
   }
   registerResources(server, service);

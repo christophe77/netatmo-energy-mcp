@@ -20,18 +20,18 @@
 
 All variables are optional.
 
-| Variable                         | Default                          | Description                                                                                                                              |
-| -------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `NETATMO_CLIENT_ID`              | stored value                     | Netatmo app client ID. Takes precedence over the stored one.                                                                             |
-| `NETATMO_CLIENT_SECRET`          | stored value                     | Netatmo app client secret. Takes precedence over the stored one.                                                                         |
-| `NETATMO_REDIRECT_URI`           | `http://localhost:8977/callback` | Must match the redirect URI registered in your Netatmo app                                                                               |
-| `NETATMO_MCP_CONFIG_DIR`         | per-OS folder, see below         | Configuration folder. Use a dedicated folder: an existing folder containing other files is never re-permissioned.                        |
-| `NETATMO_MCP_LOG_LEVEL`          | `info`                           | `debug`, `info`, `warn`, `error` or `silent`. Logs go to stderr.                                                                         |
-| `NETATMO_MCP_WRITE`              | follows the login                | `0` forces read-only mode even after `login --write`. See [write mode](#write-mode).                                                     |
-| `NETATMO_MCP_CONFIRM`            | `auto`                           | `elicitation` refuses changes unless the MCP client can ask you to confirm (elicitation). `auto` also allows the preview-and-token flow. |
-| `NETATMO_MCP_MIN_TEMP`           | `7`                              | Write mode: lowest temperature (°C) a change may set, 5–30.                                                                              |
-| `NETATMO_MCP_MAX_TEMP`           | `28`                             | Write mode: highest temperature (°C) a change may set, 5–30. `30` also allows the "max" boost.                                           |
-| `NETATMO_MCP_MAX_SETPOINT_HOURS` | `24`                             | Write mode: longest manual room setpoint, in hours (0.25–720).                                                                           |
+| Variable                         | Default                          | Description                                                                                                                                                                                                                                  |
+| -------------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NETATMO_CLIENT_ID`              | stored value                     | Netatmo app client ID. Takes precedence over the stored one.                                                                                                                                                                                 |
+| `NETATMO_CLIENT_SECRET`          | stored value                     | Netatmo app client secret. Takes precedence over the stored one.                                                                                                                                                                             |
+| `NETATMO_REDIRECT_URI`           | `http://localhost:8977/callback` | Must match the redirect URI registered in your Netatmo app                                                                                                                                                                                   |
+| `NETATMO_MCP_CONFIG_DIR`         | per-OS folder, see below         | Configuration folder. Use a dedicated folder: an existing folder containing other files is never re-permissioned.                                                                                                                            |
+| `NETATMO_MCP_LOG_LEVEL`          | `info`                           | `debug`, `info`, `warn`, `error` or `silent`. Logs go to stderr.                                                                                                                                                                             |
+| `NETATMO_MCP_WRITE`              | follows the login                | `0` forces read-only mode even after `login --write`. See [write mode](#write-mode).                                                                                                                                                         |
+| `NETATMO_MCP_CONFIRM`            | `auto`                           | How changes are confirmed. `auto`: the client's confirmation dialog when it has one, otherwise a preview and a token. `elicitation`: the dialog only. `token`: preview and token only, for clients that announce a dialog but never show it. |
+| `NETATMO_MCP_MIN_TEMP`           | `7`                              | Write mode: lowest temperature (°C) a change may set, 5–30.                                                                                                                                                                                  |
+| `NETATMO_MCP_MAX_TEMP`           | `28`                             | Write mode: highest temperature (°C) a change may set, 5–30. `30` also allows the "max" boost.                                                                                                                                               |
+| `NETATMO_MCP_MAX_SETPOINT_HOURS` | `24`                             | Write mode: longest manual room setpoint, in hours (0.25–720).                                                                                                                                                                               |
 
 If `NETATMO_CLIENT_ID` points to a different app than the one that issued
 the stored tokens, you are asked to log in again.
@@ -99,6 +99,12 @@ change, not that a human agreed: an assistant that ignores its
 instructions could call twice on its own. To require a real confirmation
 prompt, set `NETATMO_MCP_CONFIRM=elicitation`. Changes are then refused
 with clients that cannot ask you directly.
+
+**Client that never shows the dialog.** Some clients announce that they
+can ask you (elicitation) but answer automatically: every change is then
+cancelled with `client_answer: "declined"` or `"cancelled"` although you
+saw nothing. Set `NETATMO_MCP_CONFIRM=token` in that client's MCP
+configuration to use the preview-and-token flow instead.
 
 **Limits.** Changes outside `NETATMO_MCP_MIN_TEMP`–`NETATMO_MCP_MAX_TEMP`
 (7–28 °C by default) are refused. Manual room setpoints always have an

@@ -76,13 +76,38 @@ describe('token confirmation (clients without elicitation)', () => {
       server: legacyServer,
       tokens: new ConfirmationTokens(),
       logger: silentLogger,
-      requireElicitation: true,
+      mode: 'elicitation' as const,
     };
     const { makePlan, apply } = planFactory([{}]);
     const res = body(await confirmAndApply(c, ctx(), 'tool', {}, makePlan));
     expect(res.error.code).toBe('UNSUPPORTED_CAPABILITY');
     expect(res.confirmation_token).toBeUndefined();
     expect(apply).not.toHaveBeenCalled();
+  });
+});
+
+describe('NETATMO_MCP_CONFIRM=token', () => {
+  it('uses the preview + token flow even when the client advertises elicitation', async () => {
+    const c = {
+      server: legacyServer,
+      tokens: new ConfirmationTokens(),
+      logger: silentLogger,
+      mode: 'token' as const,
+    };
+    const { makePlan, apply } = planFactory([{}]);
+    const preview = body(await confirmAndApply(c, modernCtx(), 'tool', {}, makePlan));
+    expect(preview.status).toBe('confirmation_required');
+    const res = body(
+      await confirmAndApply(
+        c,
+        modernCtx(),
+        'tool',
+        { confirmation_token: preview.confirmation_token },
+        makePlan,
+      ),
+    );
+    expect(res.status).toBe('applied');
+    expect(apply).toHaveBeenCalledTimes(1);
   });
 });
 

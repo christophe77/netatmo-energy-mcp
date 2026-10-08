@@ -263,7 +263,9 @@ Safeguards:
   your agreement before calling again. Nothing is sent to Netatmo before
   that. This second flow relies on the assistant following its
   instructions; set `NETATMO_MCP_CONFIRM=elicitation` to allow changes
-  only through a confirmation prompt shown by your client.
+  only through a confirmation prompt shown by your client. If your client
+  cancels every change without showing anything, set
+  `NETATMO_MCP_CONFIRM=token`.
 - **Limits.** Temperatures must stay between 7 and 28 °C. Manual setpoints
   end after 3 h by default and 24 h at most. Change these with
   `NETATMO_MCP_MIN_TEMP`, `NETATMO_MCP_MAX_TEMP` and

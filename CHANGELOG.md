@@ -33,7 +33,9 @@ nothing changes for existing users unless they run `login --write`.
   elicitation when the client supports it (2025 and 2026-07-28 protocol
   versions), otherwise a single-use confirmation token bound to the exact
   arguments and to the exact request to send. `NETATMO_MCP_CONFIRM=elicitation`
-  accepts only confirmations shown by the client.
+  accepts only confirmations shown by the client; `token` skips the client
+  dialog for clients that advertise it without showing it. Cancellations
+  report what the client answered (`client_answer`).
 - Limits: `NETATMO_MCP_MIN_TEMP` / `NETATMO_MCP_MAX_TEMP` (7–28 °C by
   default), `NETATMO_MCP_MAX_SETPOINT_HOURS` (24 h by default; manual
   setpoints last 3 h unless told otherwise). `NETATMO_MCP_WRITE=0` forces

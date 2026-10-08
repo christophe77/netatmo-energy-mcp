@@ -42,7 +42,7 @@
         },
         {
           "name": "NETATMO_MCP_CONFIRM",
-          "description": "Write mode: 'elicitation' only accepts confirmations shown by the MCP client (default 'auto').",
+          "description": "Write mode confirmation: auto (default), elicitation (client dialog only) or token (preview + token only).",
           "isRequired": false,
           "isSecret": false
         },
