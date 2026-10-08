@@ -14,7 +14,7 @@ export const serveCommand: Command = {
     }
     // stdout carries the MCP protocol; everything else goes to stderr through the logger.
     const runtime = createRuntime(config, logger);
-    const server = createMcpServer(runtime.service, logger);
+    const server = createMcpServer(runtime.service, runtime.analytics, logger);
     const transport = new StdioServerTransport();
 
     const closed = new Promise<void>((resolve) => {

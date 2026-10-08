@@ -203,3 +203,114 @@ export type Coverage = z.infer<typeof coverageSchema>;
 export type Bucket = z.infer<typeof bucketSchema>;
 export type TemperatureHistory = z.infer<typeof temperatureHistorySchema>;
 export type BoilerHistory = z.infer<typeof boilerHistorySchema>;
+
+// ------------------------------------------------------------ analytics
+
+export const roomAnalysisSchema = z.object({
+  room_id: z.string(),
+  room_name: z.string(),
+  room_type: z.string().nullable(),
+  coverage_percent: nullableNumber.describe('Share of expected measurements actually received'),
+  temperature: z
+    .object({ mean: z.number(), min: z.number(), max: z.number(), stddev: z.number() })
+    .nullable(),
+  setpoint_mean_c: nullableNumber.describe('Mean setpoint while not in frost-protection/away/off'),
+  time_vs_target: z
+    .object({
+      evaluated_minutes: z.number(),
+      below_minutes: z.number(),
+      within_minutes: z.number(),
+      above_minutes: z.number(),
+      excluded_minutes: z.number(),
+      mean_difference_c: nullableNumber,
+    })
+    .describe('Time below / within ±0.5 °C / above the setpoint (setpoints < 12 °C excluded)'),
+  largest_drop: z
+    .object({
+      drop_c: z.number(),
+      from: iso,
+      to: iso,
+      from_c: z.number(),
+      to_c: z.number(),
+      rate_c_per_hour: z.number(),
+    })
+    .nullable()
+    .describe('Largest temperature decrease within 3 h'),
+  cooldown: z
+    .object({ events: z.number(), median_rate_c_per_hour: nullableNumber })
+    .describe('Cool-down rate after setpoint decreases of at least 1 °C'),
+});
+
+const analyticsBase = {
+  home: homeRefSchema,
+  range: z.object({ from: iso, to: iso }),
+  scale: z.string(),
+  requests: z.number(),
+  notes: z.array(z.string()),
+  caveats: z.array(z.string()),
+};
+
+export const heatingSummarySchema = z.object({
+  ...analyticsBase,
+  overall: z.object({
+    rooms_analysed: z.number(),
+    mean_temperature_c: nullableNumber.describe('Mean of room means'),
+    total_below_target_minutes: z.number(),
+    total_above_target_minutes: z.number(),
+  }),
+  boiler: z.object({
+    available: z.boolean(),
+    total_heat_demand_minutes: nullableNumber,
+    heat_demand_fraction: nullableNumber,
+    note: z.string().nullable(),
+  }),
+  rooms: z.array(roomAnalysisSchema),
+});
+
+export const roomComparisonSchema = z.object({
+  ...analyticsBase,
+  rooms: z.array(roomAnalysisSchema),
+  rankings: z.array(
+    z.object({
+      metric: z.string(),
+      description: z.string(),
+      order: z.array(z.object({ room_name: z.string(), value: z.number() })),
+    }),
+  ),
+});
+
+export const anomalySchema = z.object({
+  type: z.enum([
+    'out_of_range',
+    'impossible_jump',
+    'flatline',
+    'missing_data',
+    'rapid_drop',
+    'sustained_below_setpoint',
+    'sustained_above_setpoint',
+  ]),
+  severity: z.enum(['low', 'medium', 'high']),
+  confidence: z.enum(['low', 'medium', 'high']),
+  room_id: z.string(),
+  room_name: z.string(),
+  start: iso,
+  end: iso,
+  explanation: z.string(),
+  evidence: z.array(
+    z.object({ time: iso, temperature_c: nullableNumber, setpoint_c: nullableNumber }),
+  ),
+});
+
+export const anomalyReportSchema = z.object({
+  ...analyticsBase,
+  rooms_analysed: z.array(z.string()),
+  anomaly_count: z.number(),
+  anomalies: z.array(anomalySchema),
+  truncated: z.boolean(),
+});
+
+export type RoomAnalysis = z.infer<typeof roomAnalysisSchema>;
+export type HeatingSummary = z.infer<typeof heatingSummarySchema>;
+export type RoomComparison = z.infer<typeof roomComparisonSchema>;
+export type AnomalyView = z.infer<typeof anomalySchema>;
+export type AnomalyReport = z.infer<typeof anomalyReportSchema>;

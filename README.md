@@ -8,11 +8,11 @@ heating history. It runs locally and can't change your heating
 settings.
 
 > **Status: early development, not released.**
-> The read-only MCP server (discovery, current status and history tools)
-> runs from a local build and passes protocol tests against mocked data.
-> The underlying Netatmo API client has been validated against a real
-> installation. Heating analytics and release packaging are still in
-> progress, and nothing has been published to npm yet. See
+> The read-only MCP server (discovery, current status, history and heating
+> analytics) runs from a local build and passes protocol tests against
+> mocked data. The underlying Netatmo API client has been validated against
+> a real installation. Release packaging is still in progress, and nothing
+> has been published to npm yet. See
 > [Development status](#development-status).
 
 ## Why this project?
@@ -77,16 +77,16 @@ Design decisions are recorded as [ADRs](docs/adr/README.md).
 
 ## Development status
 
-| Phase | Scope                                                                         | Status  |
-| ----- | ----------------------------------------------------------------------------- | ------- |
-| 0     | Research, architecture, ADRs                                                  | Done    |
-| 1     | Project foundation (TypeScript, tests, config)                                | Done    |
-| 2     | OAuth2 login and token storage                                                | Done    |
-| 3     | Netatmo API client                                                            | Done    |
-| —     | Live API validation on a real installation ([guide](docs/live-validation.md)) | Done    |
-| 4     | MCP tools, resources and prompts                                              | Done    |
-| 5     | Heating analytics (summary, room comparison, anomalies)                       | Next    |
-| 6–8   | Quality, documentation, release preparation                                   | Planned |
+| Phase | Scope                                                                         | Status |
+| ----- | ----------------------------------------------------------------------------- | ------ |
+| 0     | Research, architecture, ADRs                                                  | Done   |
+| 1     | Project foundation (TypeScript, tests, config)                                | Done   |
+| 2     | OAuth2 login and token storage                                                | Done   |
+| 3     | Netatmo API client                                                            | Done   |
+| —     | Live API validation on a real installation ([guide](docs/live-validation.md)) | Done   |
+| 4     | MCP tools, resources and prompts                                              | Done   |
+| 5     | Heating analytics (summary, room comparison, anomalies)                       | Done   |
+| 6–8   | Quality, documentation, release preparation                                   | Next   |
 
 The first release will be **v0.1.0**. It will be announced in this
 repository's Releases once it has been tested against a real Netatmo

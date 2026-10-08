@@ -270,35 +270,42 @@ resolve range ─▶ pick scale ─▶ plan chunks ─▶ fetch (sequential, lim
 
 ## 8. Analytics (deterministic, no LLM)
 
-These are pure functions over `{t, value}` series, with unit tests on
-synthetic data.
+These are pure functions in `src/analytics/` (`comfort.ts`,
+`anomalies.ts`), with unit tests on synthetic data. They are exposed
+through `AnalyticsService` and the tools `netatmo_get_heating_summary`,
+`netatmo_compare_rooms` and `netatmo_detect_anomalies`.
 
-| Metric                    | Definition                                                                               | Source                                         |
-| ------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| min / max / mean / stddev | Over received points only                                                                | `temperature`                                  |
-| Time below / above target | Σ step where `temperature < sp_temperature − tolerance` (default 0.5 °C) and the reverse | `temperature` + `sp_temperature` (one request) |
-| Boiler active duration    | Σ `sum_boiler_on` (daily scales) or Σ `boileron × step/60 min` (sub-daily)               | `getmeasure`                                   |
-| Room comparison           | Per-room stats plus rankings (warmest, largest drop, most time below target)             | rooms in parallel, within the rate budget      |
-| Largest drop              | Max decrease over a sliding window (default 3 h)                                         | `temperature`                                  |
+| Metric                    | Definition                                                                                                                                                                                             | Source                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| min / max / mean / stddev | Over received points only                                                                                                                                                                              | `temperature`                                  |
+| Time below / above target | Each sample counts one step: below if `temperature < setpoint − 0.5 °C`, above if `> setpoint + 0.5 °C`. Setpoints < 12 °C (frost protection, away, off) and missing samples are excluded and reported | `temperature` + `sp_temperature` (one request) |
+| Boiler heat-demand time   | `boilerOnSeconds()`: Σ `sum_boiler_on` (daily scales, seconds) or Σ `boileron / (boileron + boileroff) × step` (sub-daily), see api-capabilities §6                                                    | `getmeasure`                                   |
+| Largest drop              | Max decrease within any 3 h window (≥ 0.5 °C), with rate in °C/h                                                                                                                                       | `temperature`                                  |
+| Cool-down rate            | After a setpoint decrease ≥ 1 °C while the room is above the new setpoint: °C/h over up to 2 h (≥ 1 h of data); median per room                                                                        | `temperature` + `sp_temperature`               |
+| Room comparison           | Per-room metrics plus rankings: warmest, coolest, most variable, most time below target, largest drop, fastest cool-down                                                                               | one request per room, sequential               |
 
-**Anomaly rules** (first version; thresholds are named constants that
-can be overridden):
+Burner cycles are **not** computed: the aggregated boiler measures cannot
+support it (api-capabilities §6).
 
-| Type                       | Rule (default)                                         | Severity               | Confidence |
-| -------------------------- | ------------------------------------------------------ | ---------------------- | ---------- |
-| `impossible_jump`          | \|Δ\| > 5 °C between consecutive 30-min points         | high                   | medium     |
-| `out_of_range`             | value < 0 °C or > 40 °C indoors                        | high                   | high       |
-| `flatline`                 | identical value for ≥ 12 h while the setpoint changed  | medium                 | low        |
-| `missing_data`             | gap > 3 × step                                         | low–medium (by length) | high       |
-| `rapid_drop`               | drop > 3 °C within 1 h while the setpoint was constant | medium                 | low        |
-| `sustained_below_setpoint` | ≥ 2 °C below setpoint for ≥ 3 h (mode ≠ off/hg)        | medium                 | medium     |
-| `sustained_above_setpoint` | ≥ 3 °C above setpoint for ≥ 6 h                        | low                    | medium     |
+**Anomaly rules** (first version; thresholds are named constants in
+`DEFAULT_THRESHOLDS`). They run on 30-minute data, over at most 14 days:
+
+| Type                       | Rule (default)                                               | Severity             | Confidence |
+| -------------------------- | ------------------------------------------------------------ | -------------------- | ---------- |
+| `impossible_jump`          | \|Δ\| > 5 °C between consecutive 30-min points               | high                 | medium     |
+| `out_of_range`             | value < 0 °C or > 40 °C indoors                              | high                 | high       |
+| `flatline`                 | identical value for ≥ 12 h while the setpoint changed ≥ 1 °C | medium               | low        |
+| `missing_data`             | gap of ≥ 3 missing points                                    | low (< 6 h) / medium | high       |
+| `rapid_drop`               | drop ≥ 3 °C within 1 h while the setpoint was constant       | medium               | low        |
+| `sustained_below_setpoint` | ≥ 2 °C below setpoint for ≥ 3 h (setpoint ≥ 12 °C)           | medium               | medium     |
+| `sustained_above_setpoint` | ≥ 3 °C above setpoint for ≥ 6 h (setpoint ≥ 12 °C)           | low                  | medium     |
 
 Each anomaly has the shape `{ type, severity, confidence, start, end,
-room, evidence: [points], explanation }`. Explanations describe what was
-observed ("temperature fell 3.4 °C in 50 min while the setpoint stayed
-at 19 °C"), never a diagnosis ("your valve is broken" or "a window was
-open").
+room_id, room_name, evidence: [≤ 5 points], explanation }`. Findings are
+sorted by severity, then by time, and capped at 30 by default.
+Explanations describe what was observed ("Temperature fell 3.2 °C in 1 h
+… while the setpoint stayed at 20 °C"), never a diagnosis ("your valve is
+broken" or "a window was open").
 
 ## 9. MCP surface
 

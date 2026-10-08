@@ -1,8 +1,12 @@
-import type { McpServer, ToolAnnotations } from '@modelcontextprotocol/server';
+import type { CallToolResult, McpServer, ToolAnnotations } from '@modelcontextprotocol/server';
 import * as z from 'zod';
+import type { AnalyticsService } from '../domain/analytics-service.js';
 import type { EnergyService } from '../domain/energy-service.js';
 import {
+  anomalyReportSchema,
   boilerHistorySchema,
+  heatingSummarySchema,
+  roomComparisonSchema,
   deviceStatusViewSchema,
   deviceViewSchema,
   heatingStatusViewSchema,
@@ -38,8 +42,14 @@ const historyInput = {
   max_points: input.maxPoints,
 };
 
-export function registerTools(server: McpServer, service: EnergyService, logger: Logger): void {
+export function registerTools(
+  server: McpServer,
+  service: EnergyService,
+  analytics: AnalyticsService,
+  logger: Logger,
+): void {
   const run = (fn: () => Promise<object>) => runTool(logger, fn);
+  registerAnalyticsTools(server, analytics, run);
 
   // ---------------------------------------------------------------- discovery
 
@@ -218,5 +228,69 @@ export function registerTools(server: McpServer, service: EnergyService, logger:
       annotations: READ_ONLY,
     },
     (args, ctx) => run(() => service.boilerHistory(args, { signal: ctx.mcpReq.signal })),
+  );
+}
+
+function registerAnalyticsTools(
+  server: McpServer,
+  analytics: AnalyticsService,
+  run: (fn: () => Promise<object>) => Promise<CallToolResult>,
+): void {
+  const range = { period: input.period, from: input.from, to: input.to };
+
+  server.registerTool(
+    'netatmo_get_heating_summary',
+    {
+      title: 'Summarise heating over a period',
+      description:
+        'Per-room temperature statistics, mean setpoint, time below / within / above target, largest temperature drop and cool-down rate, plus total boiler heat-demand time. Default: yesterday. Deterministic calculations; no energy or gas figures.',
+      inputSchema: z.object({
+        home_id: input.homeId,
+        room_id: input.roomId,
+        room_name: input.roomName.describe('Limit to one room (default: all rooms)'),
+        ...range,
+      }),
+      outputSchema: heatingSummarySchema,
+      annotations: READ_ONLY,
+    },
+    (args, ctx) => run(() => analytics.heatingSummary(args, { signal: ctx.mcpReq.signal })),
+  );
+
+  server.registerTool(
+    'netatmo_compare_rooms',
+    {
+      title: 'Compare rooms',
+      description:
+        'Compare all rooms over a period (default: last 7 days): warmest/coolest, most variable, most time below target, largest drop and fastest cool-down after setpoint decreases. Returns per-room metrics and rankings.',
+      inputSchema: z.object({ home_id: input.homeId, ...range }),
+      outputSchema: roomComparisonSchema,
+      annotations: READ_ONLY,
+    },
+    (args, ctx) => run(() => analytics.compareRooms(args, { signal: ctx.mcpReq.signal })),
+  );
+
+  server.registerTool(
+    'netatmo_detect_anomalies',
+    {
+      title: 'Detect unusual heating behaviour',
+      description:
+        'Rule-based detection of unusual readings in 30-minute room data (default: last 24 h, at most 14 days): implausible values or jumps, constant readings, missing data, rapid drops at a constant setpoint, sustained deviation from the setpoint. Each finding has severity, confidence, evidence and an explanation; findings are observations, not diagnoses.',
+      inputSchema: z.object({
+        home_id: input.homeId,
+        room_id: input.roomId,
+        room_name: input.roomName.describe('Limit to one room (default: all rooms)'),
+        ...range,
+        max_anomalies: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe('Maximum findings returned, most severe first (default 30)'),
+      }),
+      outputSchema: anomalyReportSchema,
+      annotations: READ_ONLY,
+    },
+    (args, ctx) => run(() => analytics.detectAnomalies(args, { signal: ctx.mcpReq.signal })),
   );
 }

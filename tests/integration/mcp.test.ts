@@ -32,6 +32,8 @@ const STEP: Record<string, number> = {
 
 interface ApiOptions {
   withoutThermostat?: boolean;
+  /** Room 1000000002 runs 3 °C below a 20 °C setpoint, with one implausible spike. */
+  anomalies?: boolean;
 }
 
 /** Fake Netatmo Energy API following the behaviour observed live (docs/api-capabilities.md §11). */
@@ -62,6 +64,9 @@ function api(opts: ApiOptions = {}) {
         const n = Math.min(1024, Math.floor((end - start) / step) + 1);
         const value = Array.from({ length: n }, (_, i) =>
           types.map((t) => {
+            const odd = opts.anomalies && q.get('room_id') === '1000000002';
+            if (t === 'temperature' && odd) return i === 10 ? 45 : 17;
+            if (t === 'sp_temperature' && odd) return 20;
             if (t === 'temperature') return 19 + (i % 4) * 0.5;
             if (t === 'sp_temperature') return i < n / 2 ? 19 : 20;
             if (t === 'boileron') return 100;
@@ -101,7 +106,7 @@ async function connect(opts: ApiOptions & { loggedIn?: boolean } = {}) {
       },
     }));
   }
-  const server = createMcpServer(runtime.service, silentLogger);
+  const server = createMcpServer(runtime.service, runtime.analytics, silentLogger);
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
   const client = new Client({ name: 'test', version: '0.0.0' });
@@ -119,9 +124,12 @@ async function call(client: Client, name: string, args: Record<string, unknown> 
 }
 
 const EXPECTED_TOOLS = [
+  'netatmo_compare_rooms',
+  'netatmo_detect_anomalies',
   'netatmo_get_boiler_history',
   'netatmo_get_device_status',
   'netatmo_get_heating_status',
+  'netatmo_get_heating_summary',
   'netatmo_get_home',
   'netatmo_get_home_status',
   'netatmo_get_room_status',
@@ -355,5 +363,86 @@ describe('MCP server', () => {
       expect(text).toMatch(/Hypotheses/);
       expect(text).toMatch(/does not measure gas or energy consumption/);
     }
+  });
+});
+
+describe('MCP analytics tools', () => {
+  it('summarises a day per room with boiler heat-demand time', async () => {
+    const { client } = await connect();
+    const res = await call(client, 'netatmo_get_heating_summary');
+    expect(res.isError).toBeFalsy();
+    const out = res.structuredContent;
+    expect(out.scale).toBe('30min');
+    expect(out.rooms).toHaveLength(4);
+    expect(out.boiler).toMatchObject({ available: true, total_heat_demand_minutes: 240 });
+    expect(out.boiler.note).toMatch(/Not gas or energy consumption/);
+    const room = out.rooms[0];
+    expect(room.temperature).toMatchObject({ min: 19, max: 20.5 });
+    const t = room.time_vs_target as Record<
+      'below_minutes' | 'within_minutes' | 'above_minutes' | 'evaluated_minutes',
+      number
+    >;
+    expect(t.below_minutes + t.within_minutes + t.above_minutes).toBe(t.evaluated_minutes);
+    expect(out.caveats.join(' ')).toMatch(/Outdoor temperature is not available/);
+  });
+
+  it('reports the boiler as unavailable in a valves-only home', async () => {
+    const { client } = await connect({ withoutThermostat: true });
+    const res = await call(client, 'netatmo_get_heating_summary', { room_name: 'bureau' });
+    expect(res.isError).toBeFalsy();
+    expect(res.structuredContent.boiler).toMatchObject({
+      available: false,
+      total_heat_demand_minutes: null,
+    });
+    expect(res.structuredContent.rooms).toHaveLength(1);
+  });
+
+  it('compares rooms with rankings', async () => {
+    const { client } = await connect({ anomalies: true });
+    const res = await call(client, 'netatmo_compare_rooms', { period: 'last_7d' });
+    expect(res.isError).toBeFalsy();
+    const rankings = res.structuredContent.rankings as {
+      metric: string;
+      order: { room_name: string; value: number }[];
+    }[];
+    expect(rankings.map((r) => r.metric)).toEqual([
+      'warmest',
+      'coolest',
+      'most_variable',
+      'most_time_below_target',
+      'largest_drop',
+      'fastest_cooldown',
+    ]);
+    expect(rankings.find((r) => r.metric === 'most_time_below_target')!.order[0]!.room_name).toBe(
+      'Chambre parents',
+    );
+    expect(rankings.find((r) => r.metric === 'coolest')!.order[0]!.room_name).toBe(
+      'Chambre parents',
+    );
+  });
+
+  it('detects anomalies with severity, confidence and evidence', async () => {
+    const { client } = await connect({ anomalies: true });
+    const res = await call(client, 'netatmo_detect_anomalies', { period: 'yesterday' });
+    expect(res.isError).toBeFalsy();
+    const out = res.structuredContent;
+    expect(out.rooms_analysed).toHaveLength(4);
+    const types = out.anomalies.map((a: { type: string }) => a.type);
+    expect(types).toContain('out_of_range');
+    expect(types).toContain('sustained_below_setpoint');
+    for (const a of out.anomalies) {
+      expect(a.room_name).toBe('Chambre parents');
+      expect(a.explanation).not.toMatch(/broken|faulty|defective/i);
+    }
+    expect(out.anomalies[0].severity).toBe('high');
+    expect(out.caveats[0]).toMatch(/not confirmed faults/);
+  });
+
+  it('finds nothing unusual in ordinary data and limits the range', async () => {
+    const { client } = await connect();
+    const res = await call(client, 'netatmo_detect_anomalies', { room_name: 'bureau' });
+    expect(res.structuredContent.anomaly_count).toBe(0);
+    const tooLong = await call(client, 'netatmo_detect_anomalies', { period: 'last_30d' });
+    expect(JSON.parse(tooLong.content[0]!.text).error.code).toBe('INVALID_ARGUMENT');
   });
 });

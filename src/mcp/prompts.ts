@@ -45,12 +45,11 @@ export function registerPrompts(server: McpServer): void {
       return text(`Write a daily heating report for my Netatmo home.${homeClause(home_id)}
 
 Steps:
-1. Call netatmo_list_rooms.
-2. For each room, call netatmo_get_temperature_history and netatmo_get_setpoint_history with ${range} and mode "summary".
-3. Call netatmo_get_boiler_history with ${range} (if boiler history is unsupported, say so and continue).
-4. Optionally call netatmo_get_home_status for current alerts.
+1. Call netatmo_get_heating_summary with ${range}. It returns per-room statistics, time below/within/above target and the total boiler heat-demand time in one call.
+2. Call netatmo_detect_anomalies with the same range for notable events.
+3. Optionally call netatmo_get_home_status for current alerts (batteries, unreachable devices).
 
-Report per room: min/mean/max temperature, typical setpoint, and how far the temperature stayed from the setpoint. Report the total boiler heat-demand time.
+Report per room: min/mean/max temperature, mean setpoint and time below/above target. Report the total boiler heat-demand time and mention any anomalies.
 
 ${LIMITS}
 
@@ -75,7 +74,7 @@ ${STRUCTURE}`);
     ({ home_id, room_name, period }) =>
       text(`Review my Netatmo heating for unusual behaviour over ${period ?? 'last_24h'}${room_name ? ` in the room "${room_name}"` : ' in every room'}.${homeClause(home_id)}
 
-Use netatmo_get_temperature_history and netatmo_get_setpoint_history (mode "aggregated"), netatmo_get_boiler_history and netatmo_get_device_status. Look for:
+Call netatmo_detect_anomalies with this period (and room_name if given), then netatmo_get_device_status for batteries and reachability. Use netatmo_get_temperature_history (mode "detailed", short range) to look closer at a specific finding if needed. Consider in particular:
 - sudden temperature jumps or drops while the setpoint was constant,
 - long periods far below or above the setpoint,
 - suspiciously constant readings,
@@ -104,7 +103,7 @@ ${STRUCTURE}`),
     ({ home_id, period }) =>
       text(`Compare the rooms of my Netatmo home over ${period ?? 'last_7d'}.${homeClause(home_id)}
 
-Call netatmo_list_rooms, then for each room netatmo_get_temperature_history (mode "summary") and netatmo_get_setpoint_history (mode "summary"). Present a table with mean/min/max temperature, temperature variability (stddev), mean setpoint and the mean difference to the setpoint. Rank the rooms (warmest, coolest, most variable, furthest below setpoint).
+Call netatmo_compare_rooms with this period. Present a table with mean/min/max temperature, variability (stddev), mean setpoint, time below/above target and cool-down rate, then summarise the rankings it returns (warmest, coolest, most variable, most time below target, largest drop, fastest cool-down).
 
 ${LIMITS}
 
@@ -128,7 +127,7 @@ ${STRUCTURE}`),
     ({ home_id, period }) =>
       text(`Review the heating patterns of my Netatmo home over ${period ?? 'last_7d'} and identify possible optimisation opportunities.${homeClause(home_id)}
 
-Use netatmo_get_boiler_history (daily buckets), and for each room netatmo_get_setpoint_history and netatmo_get_temperature_history (mode "aggregated"). Consider: setpoints that are high for the room type or time of day, rooms that stay above their setpoint, heat demand at times when rooms are likely unoccupied, and day-to-day changes in boiler heat-demand time.
+Call netatmo_get_heating_summary and netatmo_get_boiler_history (daily buckets) for this period, and netatmo_compare_rooms. Use netatmo_get_setpoint_history for rooms that need a closer look. Consider: setpoints that are high for the room type or time of day, rooms that stay above their setpoint, heat demand at times when rooms are likely unoccupied, and day-to-day changes in boiler heat-demand time.
 
 Without outdoor temperature data, differences between days may simply reflect the weather; say so where relevant. Express any potential savings qualitatively only.
 

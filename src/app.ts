@@ -2,6 +2,7 @@ import { CredentialStore } from './auth/credential-store.js';
 import type { FetchFn } from './auth/oauth.js';
 import { TokenManager } from './auth/token-manager.js';
 import type { AppConfig } from './config/loader.js';
+import { AnalyticsService } from './domain/analytics-service.js';
 import { EnergyService } from './domain/energy-service.js';
 import { HistoryService } from './domain/history/history-service.js';
 import { NetatmoClient, type NetatmoClientOptions } from './netatmo/client.js';
@@ -15,6 +16,7 @@ export interface Runtime {
   client: NetatmoClient;
   history: HistoryService;
   service: EnergyService;
+  analytics: AnalyticsService;
   clock: Clock;
 }
 
@@ -53,5 +55,6 @@ export function createRuntime(
   });
   const history = new HistoryService(client);
   const service = new EnergyService(client, history, clock);
-  return { store, tokens, client, history, service, clock };
+  const analytics = new AnalyticsService(client, history, service, clock);
+  return { store, tokens, client, history, service, analytics, clock };
 }

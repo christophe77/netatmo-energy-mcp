@@ -7,18 +7,17 @@ import type { NetatmoClient } from '../netatmo/client.js';
 import { LARGE_SCALES, SCALE_SECONDS, type Scale } from '../netatmo/endpoints.js';
 import type { MeasurePoint } from '../netatmo/measures.js';
 import { systemClock, type Clock } from '../utils/clock.js';
-import {
-  addLocalDays,
-  formatIso,
-  parseIsoInZone,
-  resolvePeriod,
-  tzOffsetSeconds,
-  type Period,
-} from '../utils/dates.js';
+import { addLocalDays, formatIso } from '../utils/dates.js';
 import { boilerOnSeconds, BOILER_CAVEATS } from './heating/boiler.js';
 import { toHomeSnapshot, type HomeSnapshot, type ModuleSnapshot } from './heating/snapshot.js';
 import type { HistoryService } from './history/history-service.js';
-import { DEFAULT_MAX_REQUESTS, estimateRequests } from './history/history-service.js';
+import {
+  alignBegin,
+  chooseRoomScale,
+  expectedPoints,
+  resolveRange,
+  type RangeInput,
+} from './history/range.js';
 import {
   computeStats,
   coverage,
@@ -55,11 +54,7 @@ export interface CallOptions {
   signal?: AbortSignal;
 }
 
-export interface RangeInput {
-  period?: Period | undefined;
-  from?: string | undefined;
-  to?: string | undefined;
-}
+export type { RangeInput };
 
 export interface RoomRef {
   room_id?: string | undefined;
@@ -86,9 +81,6 @@ export interface BoilerHistoryInput extends RangeInput {
 export const DEFAULT_AGGREGATED_POINTS = 48;
 export const DEFAULT_DETAILED_POINTS = 200;
 export const MAX_OUTPUT_POINTS = 1000;
-export const MAX_RANGE_DAYS = 400;
-
-const ROOM_AUTO_SCALES: Scale[] = ['30min', '1hour', '3hours', '1day', '1week'];
 
 export class EnergyService {
   private readonly clock: Clock;
@@ -99,6 +91,10 @@ export class EnergyService {
     clock?: Clock,
   ) {
     this.clock = clock ?? systemClock;
+  }
+
+  private nowSeconds(): number {
+    return Math.floor(this.clock.now() / 1000);
   }
 
   // ------------------------------------------------------------ discovery
@@ -242,8 +238,8 @@ export class EnergyService {
     const notes: string[] = [];
     if (!home.timezone) notes.push('The home time zone is unknown; times are shown in UTC.');
 
-    const range = this.resolveRange(input, 'last_24h', tz);
-    const scale = this.roomScale(range, input.scale, notes);
+    const range = resolveRange(input, 'last_24h', tz, this.nowSeconds());
+    const scale = chooseRoomScale(range, input.scale, notes);
     const step = SCALE_SECONDS[scale];
     const begin = alignBegin(range.begin, scale, tz);
     const series = await this.history.roomSeries(
@@ -309,7 +305,7 @@ export class EnergyService {
     const home = await this.home(input.home_id, opts);
     const tz = zone(home);
     const notes: string[] = [];
-    const range = this.resolveRange(input, 'yesterday', tz);
+    const range = resolveRange(input, 'yesterday', tz, this.nowSeconds());
     const scale = boilerScale(range, input.scale, notes);
     const step = SCALE_SECONDS[scale];
     const daily = LARGE_SCALES.includes(scale);
@@ -429,67 +425,15 @@ export class EnergyService {
       boiler_history_available: describeHeatingSetup(home).boilerSource !== undefined,
     };
   }
-
-  private resolveRange(
-    input: RangeInput,
-    fallback: Period,
-    tz: string,
-  ): { begin: number; end: number } {
-    const now = Math.floor(this.clock.now() / 1000);
-    if (input.period && (input.from || input.to)) {
-      throw new InvalidArgumentError('Use either "period" or "from"/"to", not both.');
-    }
-    let begin: number;
-    let end: number;
-    if (input.from) {
-      begin = parseIsoInZone(input.from, tz);
-      end = input.to ? parseIsoInZone(input.to, tz) : now;
-    } else if (input.to) {
-      throw new InvalidArgumentError('"to" requires "from".');
-    } else {
-      ({ begin, end } = resolvePeriod(input.period ?? fallback, now, tz));
-    }
-    end = Math.min(end, now);
-    if (begin >= end) {
-      throw new InvalidArgumentError(
-        'The start of the range must be before its end (and in the past).',
-      );
-    }
-    if (end - begin > MAX_RANGE_DAYS * 86_400) {
-      throw new InvalidArgumentError(`Ranges are limited to ${MAX_RANGE_DAYS} days.`);
-    }
-    return { begin, end };
-  }
-
-  private roomScale(
-    range: { begin: number; end: number },
-    requested: 'auto' | Scale | undefined,
-    notes: string[],
-  ): Scale {
-    if (requested && requested !== 'auto') {
-      const needed = estimateRequests(range, requested);
-      if (needed > DEFAULT_MAX_REQUESTS) {
-        throw new InvalidArgumentError(
-          `The ${requested} scale would need about ${needed} Netatmo requests for this range (limit ${DEFAULT_MAX_REQUESTS}).`,
-          { hint: 'Use scale "auto", a coarser scale or a shorter range.' },
-        );
-      }
-      return requested;
-    }
-    const span = range.end - range.begin;
-    const chosen = ROOM_AUTO_SCALES.find((s) => span / SCALE_SECONDS[s] + 1 <= 1024) ?? '1week';
-    notes.push(`Scale "${chosen}" was chosen automatically for this range.`);
-    return chosen;
-  }
 }
 
 // ---------------------------------------------------------------- helpers
 
-function zone(home: Home): string {
+export function zone(home: Home): string {
   return home.timezone ?? 'UTC';
 }
 
-function ref(home: Home): HomeRef {
+export function ref(home: Home): HomeRef {
   return { id: home.id, name: home.name, timezone: zone(home) };
 }
 
@@ -595,22 +539,6 @@ function valuePoints(points: MeasurePoint[], index: number): ValuePoint[] {
     if (v != null) out.push({ t: p.t, v });
   }
   return out;
-}
-
-/**
- * Sub-daily buckets start exactly at date_begin (observed), so align the start to the scale
- * in local time to get readable bucket boundaries. Daily and longer scales are aligned by
- * Netatmo to local midnight.
- */
-export function alignBegin(begin: number, scale: Scale, tz: string): number {
-  if (LARGE_SCALES.includes(scale)) return begin;
-  const step = SCALE_SECONDS[scale];
-  const off = tzOffsetSeconds(begin, tz);
-  return Math.floor((begin + off) / step) * step - off;
-}
-
-function expectedPoints(begin: number, end: number, scale: Scale): number {
-  return Math.max(0, Math.floor((end - begin) / SCALE_SECONDS[scale]) + 1);
 }
 
 function bucketEnd(t: number, scale: Scale, tz: string, next: number | undefined): number {
