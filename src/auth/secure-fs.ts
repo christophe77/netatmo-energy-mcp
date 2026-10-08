@@ -95,7 +95,22 @@ export function restrictWindowsAcl(dir: string, logger: Logger): boolean {
   return true;
 }
 
-/** Windows: lists principals with access to `dir`, for `doctor`. */
+/**
+ * Windows: distinct principals in the ACL of `path` (one principal may hold several entries,
+ * e.g. separate ACEs for the folder itself and for inheritance).
+ */
+export function windowsAclPrincipals(target: string): string[] | undefined {
+  const acl = describeWindowsAcl(target);
+  if (acl === undefined) return undefined;
+  const principals = new Set<string>();
+  for (const line of acl.replace(target, '').split(/\r?\n/)) {
+    const match = /^\s*(.+?):\(/.exec(line);
+    if (match?.[1]) principals.add(match[1].trim());
+  }
+  return [...principals];
+}
+
+/** Windows: raw icacls listing of `dir`, for `doctor`. */
 export function describeWindowsAcl(dir: string): string | undefined {
   const res = spawnSync(system32('icacls.exe'), [dir], {
     encoding: 'utf8',

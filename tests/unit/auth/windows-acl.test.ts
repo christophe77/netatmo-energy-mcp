@@ -6,6 +6,7 @@ import {
   currentWindowsSid,
   describeWindowsAcl,
   ensureSecureDir,
+  windowsAclPrincipals,
 } from '../../../src/auth/secure-fs.js';
 import { silentLogger } from '../../../src/utils/logger.js';
 
@@ -16,16 +17,18 @@ describe.runIf(process.platform === 'win32')('Windows ACL hardening', () => {
     try {
       const result = await ensureSecureDir(dir, silentLogger);
       expect(result).toEqual({ created: true, aclRestricted: true });
-      const acl = describeWindowsAcl(dir) ?? '';
       expect(currentWindowsSid()).toMatch(/^S-1-5-/);
-      // No inherited entries and no broad groups.
-      expect(acl).not.toMatch(/\(I\)/);
-      // Exactly two entries: the current user and SYSTEM (locale-independent check).
-      expect(acl.match(/:\(/g)).toHaveLength(2);
-      expect(acl).toMatch(/SYSTEM|AUTORITE NT|NT AUTHORITY/i);
+      const acl = describeWindowsAcl(dir) ?? '';
+      // No inherited entries.
+      expect(acl, acl).not.toMatch(/\(I\)/);
+      // Two principals: the current user and SYSTEM (locale-independent check).
+      const principals = windowsAclPrincipals(dir) ?? [];
+      expect(principals, acl).toHaveLength(2);
+      expect(principals.join(' '), acl).toMatch(/SYSTEM|Syst|AUTORITE NT|NT AUTHORITY/i);
       // Files created inside inherit the restricted ACL.
-      await fs.writeFile(path.join(dir, 'f'), 'x');
-      expect((describeWindowsAcl(path.join(dir, 'f')) ?? '').match(/:\(/g)).toHaveLength(2);
+      const file = path.join(dir, 'f');
+      await fs.writeFile(file, 'x');
+      expect(windowsAclPrincipals(file), describeWindowsAcl(file)).toHaveLength(2);
     } finally {
       await fs.rm(parent, { recursive: true, force: true });
     }
