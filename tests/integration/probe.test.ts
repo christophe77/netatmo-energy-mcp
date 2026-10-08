@@ -110,6 +110,7 @@ describe('probe command', () => {
     }
     // The report lists field names (e.g. 'coordinates'); responses must not contain location at all.
     expect(responses).not.toMatch(/coordinates|altitude/);
-    expect(JSON.parse(responses)).toHaveLength(12);
+    expect(JSON.parse(responses)).toHaveLength(15);
+    expect(report).toMatch(/Oldest room temperature at 30min: .*days ago/);
   });
 });

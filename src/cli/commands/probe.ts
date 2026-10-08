@@ -29,12 +29,13 @@ import {
   spellingReport,
 } from '../../probe/analyze.js';
 import { Sanitizer } from '../../probe/sanitize.js';
+import { formatLocal } from '../../utils/dates.js';
 import { VERSION } from '../../version.js';
 import { parseCommandArgs, type Command, type CommandContext } from '../index.js';
 
 const USAGE = `netatmo-energy-mcp probe [--days <n>] [--out <dir>] [--raw] [--refresh-test] [--rotation-test]
 
-Makes a small number of read-only API calls (about 10–20, rate-limited to 4 per 10 s) and writes:
+Makes a small number of read-only API calls (about 15–25, rate-limited to 4 per 10 s) and writes:
   report.md        Findings: device types, field names, response shapes, boiler unit checks
   responses.json   Sanitized API responses (IDs replaced, names generic, location removed)
 
@@ -225,6 +226,27 @@ async function runProbe({ config, out, logger, argv }: CommandContext): Promise<
       if (i === 0) await probeRoomVariants(home, room.id, roomLabel, begin);
     }
 
+    // history depth: without date_begin Netatmo returns the oldest data available
+    md.push('', '### History depth', '');
+    const firstRoom = home.rooms[0];
+    if (firstRoom) {
+      out.line('  history depth…');
+      for (const scale of ['30min', '1day'] as const) {
+        const oldest = await attempt(`oldest room data (${scale})`, () =>
+          runtime.client.getRoomMeasure({
+            homeId: home.id,
+            roomId: firstRoom.id,
+            scale,
+            types: ['temperature'],
+            limit: 1,
+          }),
+        );
+        md.push(
+          `- Oldest room temperature at ${scale}: ${describeOldest(oldest, home.timezone, now)}`,
+        );
+      }
+    }
+
     // boiler history
     md.push('', '### Boiler activity (getmeasure)', '');
     const source = setup.boilerSource;
@@ -270,6 +292,16 @@ async function runProbe({ config, out, logger, argv }: CommandContext): Promise<
           : '- Cross-check hourly vs daily: not enough overlapping data',
       );
     }
+    const oldestBoiler = await attempt('oldest boiler data (1day)', () =>
+      runtime.client.getMeasure({
+        deviceId: source.deviceId,
+        moduleId: source.moduleId,
+        scale: '1day',
+        types: ['sum_boiler_on'],
+        limit: 1,
+      }),
+    );
+    md.push(`- Oldest boiler data at 1day: ${describeOldest(oldestBoiler, home.timezone, now)}`);
   }
 
   async function probeRoomVariants(home: Home, roomId: string, roomLabel: string, begin: number) {
@@ -374,6 +406,18 @@ async function runProbe({ config, out, logger, argv }: CommandContext): Promise<
     );
     return errors.length === 0 ? 0 : 1;
   }
+}
+
+function describeOldest(
+  res: MeasureResult | undefined,
+  timeZone: string | null,
+  now: number,
+): string {
+  const first = res?.points[0];
+  if (!first) return res ? 'no data returned' : 'request failed';
+  const days = Math.floor((now - first.t) / 86_400);
+  const when = timeZone ? formatLocal(first.t, timeZone) : new Date(first.t * 1000).toISOString();
+  return `${when} (${days} days ago)`;
 }
 
 function lastJson(exchanges: RawExchange[], endpoint: RawExchange['endpoint']): unknown {

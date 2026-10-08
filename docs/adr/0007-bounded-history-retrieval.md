@@ -23,9 +23,15 @@ expensive: a year of 30-minute data is 17,520 points.
 - Points are deduplicated by timestamp and sorted ascending. Gaps are
   reported and never filled. Interpolation is not offered in v0.1.
 - There are three output modes: `summary`, `aggregated` (default,
-  ≤ 200 buckets with min/mean/max) and `detailed` (≤ 500 raw points by
-  default, hard max 1000, with a `truncated` flag).
-- Fully past windows are cached in memory for 1 h.
+  48 buckets with min/mean/max) and `detailed` (200 raw points by
+  default). `max_points` can raise either to a hard maximum of 1000, and
+  a `truncated` flag marks cut output. The defaults were lowered during
+  implementation (Phase 4): 48 buckets covers a week at 3.5 h
+  resolution, enough for most questions, and keeps a response to a few
+  thousand tokens.
+- Fully past windows are cached in memory for 1 h. _(Not implemented
+  in v0.1. Topology and status caches exist; measure caching is
+  deferred until usage shows it is needed.)_
 - Client-side limiter defaults: 40 requests per 10 s and 400 per hour
   (80 % of the per-user limits), configurable. They are revisited after
   live testing of the per-app limit.

@@ -261,8 +261,8 @@ resolve range ─▶ pick scale ─▶ plan chunks ─▶ fetch (sequential, lim
    | `mode`                 | Returns                                                                                    | Size                                                                                     |
    | ---------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
    | `summary`              | Statistics only                                                                            | Constant                                                                                 |
-   | `aggregated` (default) | Statistics plus the series downsampled to ≤ `max_points` buckets (min/mean/max per bucket) | ≤ 200 points by default                                                                  |
-   | `detailed`             | Raw points                                                                                 | ≤ `max_points` (default 500, hard max 1000); `truncated: true` plus a hint if more exist |
+   | `aggregated` (default) | Statistics plus the series downsampled to ≤ `max_points` buckets (min/mean/max per bucket) | 48 buckets by default                                                                    |
+   | `detailed`             | Raw points                                                                                 | ≤ `max_points` (default 200, hard max 1000); `truncated: true` plus a hint if more exist |
 
    Original timestamps are preserved in `detailed` mode. Every
    response states `scale`, `real_time`, `timezone`, `coverage`

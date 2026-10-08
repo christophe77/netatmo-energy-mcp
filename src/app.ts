@@ -2,6 +2,7 @@ import { CredentialStore } from './auth/credential-store.js';
 import type { FetchFn } from './auth/oauth.js';
 import { TokenManager } from './auth/token-manager.js';
 import type { AppConfig } from './config/loader.js';
+import { EnergyService } from './domain/energy-service.js';
 import { HistoryService } from './domain/history/history-service.js';
 import { NetatmoClient, type NetatmoClientOptions } from './netatmo/client.js';
 import { RateLimiter, type RateWindow } from './netatmo/rate-limiter.js';
@@ -13,6 +14,7 @@ export interface Runtime {
   tokens: TokenManager;
   client: NetatmoClient;
   history: HistoryService;
+  service: EnergyService;
   clock: Clock;
 }
 
@@ -49,5 +51,7 @@ export function createRuntime(
     ...(overrides.fetch && { fetch: overrides.fetch }),
     ...(overrides.onExchange && { onExchange: overrides.onExchange }),
   });
-  return { store, tokens, client, history: new HistoryService(client), clock };
+  const history = new HistoryService(client);
+  const service = new EnergyService(client, history, clock);
+  return { store, tokens, client, history, service, clock };
 }

@@ -53,10 +53,12 @@
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test"
   },
   "dependencies": {
+    "@modelcontextprotocol/server": "^2.3.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@modelcontextprotocol/client": "^2.3.1",
     "@types/node": "^22.20.5",
     "eslint": "^10.12.0",
     "globals": "^17.13.0",
