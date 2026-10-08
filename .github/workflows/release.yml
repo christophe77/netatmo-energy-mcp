@@ -1,13 +1,14 @@
 name: Release
 
-# Manual only. Publishing must be reviewed: run with dry_run first. In the repository settings,
-# protect the "npm" environment with required reviewers and restrict its deployment branches
-# to main (this job holds id-token: write for npm trusted publishing).
+# Manual only, two human approvals per release (see docs/releasing.md):
+#   1. GitHub: the "npm" environment requires a reviewer and only deploys from main.
+#   2. npm: the trusted publisher may only *stage* a version (OIDC, no token); it goes live
+#      after the maintainer approves it with 2FA (npm stage approve / npmjs.com).
 on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Dry run (build, validate and `npm publish --dry-run`, no upload)'
+        description: 'Dry run (build, validate and `npm stage publish --dry-run`, no upload)'
         type: boolean
         default: true
 
@@ -16,7 +17,7 @@ permissions:
 
 jobs:
   publish:
-    name: Publish to npm (${{ inputs.dry_run && 'dry run' || 'LIVE' }})
+    name: Stage on npm (${{ inputs.dry_run && 'dry run' || 'LIVE' }})
     runs-on: ubuntu-latest
     environment: npm
     permissions:
@@ -51,5 +52,5 @@ jobs:
             if (p.private) { console.error('package.json is private'); process.exit(1); }
             if (p.version === '0.0.0') { console.error('version not set'); process.exit(1); }
           "
-      - name: Publish
-        run: npm publish --access public --provenance ${{ inputs.dry_run && '--dry-run' || '' }}
+      - name: Stage the version on npm (goes live only after maintainer approval with 2FA)
+        run: npm stage publish --access public --provenance ${{ inputs.dry_run && '--dry-run' || '' }}

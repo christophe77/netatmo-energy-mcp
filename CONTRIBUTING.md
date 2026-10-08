@@ -51,7 +51,8 @@ account.
 | `pnpm docs:tools`                              | Regenerate [docs/tools.md](docs/tools.md) from the built server. Run it after changing a tool. |
 | `pnpm check:package`                           | Pack the npm tarball, install it and talk MCP to it                                            |
 
-To try the server against your own account:
+To try the server against your own account, use the local build. Inside this
+repository, `npx netatmo-energy-mcp` resolves the local `package.json` and fails:
 
 ```bash
 node dist/index.js login
@@ -86,6 +87,10 @@ decisions: [docs/adr/](docs/adr/README.md).
    table. Then note the change in `CHANGELOG.md` under _Unreleased_.
 5. Do not add runtime dependencies without a short justification
    ([ADR-0006](docs/adr/0006-minimal-runtime-dependencies.md)).
+
+## Releases
+
+Maintainers: see [docs/releasing.md](docs/releasing.md).
 
 ## Reporting device compatibility
 
