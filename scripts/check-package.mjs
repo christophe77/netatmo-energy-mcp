@@ -56,6 +56,20 @@ try {
   check(!files.some(credentialLike), 'no credential-like files');
   check(packed.size < 500_000, `tarball is small (${packed.size} bytes)`);
   check(pkg.bin?.['netatmo-energy-mcp'] === 'dist/index.js', 'bin points to dist/index.js');
+  // MCP Registry metadata must match the published package.
+  const server = JSON.parse(readFileSync(path.join(root, 'server.json'), 'utf8'));
+  check(
+    server.name === pkg.mcpName,
+    `server.json name equals package.json mcpName (${pkg.mcpName})`,
+  );
+  check(
+    server.version === pkg.version && server.packages?.[0]?.version === pkg.version,
+    `server.json versions equal package.json version (${pkg.version})`,
+  );
+  check(
+    server.packages?.[0]?.identifier === pkg.name,
+    'server.json package identifier is the npm name',
+  );
   check(
     readFileSync(path.join(root, 'dist', 'index.js'), 'utf8').startsWith('#!/usr/bin/env node'),
     'dist/index.js has a node shebang',

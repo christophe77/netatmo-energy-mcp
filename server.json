@@ -1,0 +1,40 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.christophe77/netatmo-energy-mcp",
+  "title": "Netatmo Energy",
+  "description": "Read-only MCP server for Netatmo thermostats and radiator valves: status, history, analytics.",
+  "repository": {
+    "url": "https://github.com/christophe77/netatmo-energy-mcp",
+    "source": "github"
+  },
+  "websiteUrl": "https://github.com/christophe77/netatmo-energy-mcp#readme",
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "netatmo-energy-mcp",
+      "version": "0.1.0",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        {
+          "name": "NETATMO_CLIENT_ID",
+          "description": "Netatmo app client ID. Optional after running `npx -y netatmo-energy-mcp login`, which stores it.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "NETATMO_CLIENT_SECRET",
+          "description": "Netatmo app client secret. Optional after `login`, which stores it locally.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "NETATMO_MCP_LOG_LEVEL",
+          "description": "Log level written to stderr: debug, info, warn, error or silent.",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}

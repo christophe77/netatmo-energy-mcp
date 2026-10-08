@@ -21,9 +21,9 @@ un accès structuré à votre chauffage :
 Il tourne sur votre machine, ne communique qu'avec l'**API Netatmo Energy**
 officielle et ne peut modifier aucun réglage de chauffage.
 
-> **État : pré-version.** La version 0.1.0 est en préparation. Tant
-> qu'elle n'est pas publiée sur npm, installez depuis les sources (voir
-> [Démarrage rapide](#démarrage-rapide)).
+> **État : première version (0.1.0).** L'intégration de l'API Netatmo a été
+> validée sur une installation réelle ; retours et rapports de compatibilité
+> bienvenus.
 
 ## Pourquoi ce projet ?
 
@@ -105,10 +105,9 @@ seule**. Vérifiez ensuite la configuration :
 npx -y netatmo-energy-mcp doctor
 ```
 
-> **Avant la publication de la 0.1.0 sur npm :** clonez le dépôt, lancez
-> `pnpm install && pnpm build`, puis remplacez `npx -y netatmo-energy-mcp`
-> par `node /chemin/vers/netatmo-energy-mcp/dist/index.js` partout dans
-> ce document.
+> **Depuis les sources :** clonez le dépôt, lancez `pnpm install && pnpm build`,
+> puis utilisez `node /chemin/vers/netatmo-energy-mcp/dist/index.js` à la
+> place de `npx -y netatmo-energy-mcp`.
 
 ### 3. Connecter votre client MCP
 
@@ -228,7 +227,7 @@ Des exemples de configuration sont fournis pour :
 
 Voir [examples/](examples/). Le serveur est testé avec le client officiel
 du SDK MCP et le MCP Inspector. La vérification de bout en bout avec
-chaque client fait partie de la liste de contrôle de la version 0.1.0.
+chaque client est en cours ; signalez tout problème propre à un client.
 
 ## Authentification
 

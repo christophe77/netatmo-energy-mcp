@@ -16,9 +16,9 @@ Configuration formats were checked against each client's documentation
 on 2026-10-08. Clients change; if something no longer matches, please
 open an issue.
 
-## Before 0.1.0 is published on npm
+## Running from a local build
 
-Use a local build instead of `npx`:
+To run a clone instead of the npm package:
 
 ```json
 { "command": "node", "args": ["/absolute/path/to/netatmo-energy-mcp/dist/index.js"] }

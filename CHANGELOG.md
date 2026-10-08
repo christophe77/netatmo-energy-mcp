@@ -7,8 +7,9 @@ minor versions may contain breaking changes; they are always listed.
 
 ## [Unreleased]
 
-First public version, planned as **0.1.0**: a read-only MCP server for
-Netatmo Energy.
+## [0.1.0] - 2026-10-08
+
+First public version: a read-only MCP server for Netatmo Energy.
 
 ### Added
 
@@ -62,4 +63,5 @@ Netatmo Energy.
 - Tested on Netatmo Smart Thermostat (`NATherm1`), Smart Radiator Valves
   (`NRV`) and Relay (`NAPlug`). OpenTherm devices are untested.
 
-[Unreleased]: https://github.com/christophe77/netatmo-energy-mcp/commits/main
+[Unreleased]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/christophe77/netatmo-energy-mcp/releases/tag/v0.1.0

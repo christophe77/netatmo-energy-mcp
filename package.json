@@ -1,7 +1,6 @@
 {
   "name": "netatmo-energy-mcp",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "Read-only MCP server for Netatmo smart thermostats and radiator valves: heating status, history and analytics for AI assistants.",
   "keywords": [
     "netatmo",
@@ -41,6 +40,9 @@
     "node": ">=22.19"
   },
   "packageManager": "pnpm@10.28.2",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
@@ -54,7 +56,8 @@
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "check:package": "node scripts/check-package.mjs",
     "docs:tools": "node scripts/gen-tools-doc.mjs",
-    "docs:check": "node scripts/gen-tools-doc.mjs --check"
+    "docs:check": "node scripts/gen-tools-doc.mjs --check",
+    "prepublishOnly": "pnpm build && pnpm test"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.3.1",

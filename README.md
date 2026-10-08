@@ -21,8 +21,8 @@ structured access to your heating:
 It runs on your machine, talks only to the official **Netatmo Energy API**,
 and cannot change any heating setting.
 
-> **Status: pre-release.** Version 0.1.0 is being prepared. Until it is
-> published on npm, install from source (see [Quick start](#quick-start)).
+> **Status: early release (0.1.0).** The Netatmo API integration has been
+> validated on a real installation; feedback and device reports are welcome.
 
 ## Why this project?
 
@@ -100,10 +100,10 @@ the setup:
 npx -y netatmo-energy-mcp doctor
 ```
 
-> **Before 0.1.0 is on npm:** clone the repository, run
-> `pnpm install && pnpm build`, then replace `npx -y netatmo-energy-mcp`
-> with `node /path/to/netatmo-energy-mcp/dist/index.js` everywhere in
-> this README.
+> **Running from source instead:** clone the repository, run
+> `pnpm install && pnpm build`, then use
+> `node /path/to/netatmo-energy-mcp/dist/index.js` in place of
+> `npx -y netatmo-energy-mcp`.
 
 ### 3. Connect your MCP client
 
@@ -221,7 +221,7 @@ examples are provided for:
 
 See [examples/](examples/). The server is tested with the official MCP
 SDK client and the MCP Inspector. Checking each client end to end is
-part of the v0.1.0 release checklist.
+ongoing; please report any client-specific problem.
 
 ## Authentication
 
