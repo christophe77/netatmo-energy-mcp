@@ -1,7 +1,8 @@
 name: Release
 
-# Manual only. Publishing must be reviewed: run with dry_run first, and protect the "npm"
-# environment with required reviewers in the repository settings.
+# Manual only. Publishing must be reviewed: run with dry_run first. In the repository settings,
+# protect the "npm" environment with required reviewers and restrict its deployment branches
+# to main (this job holds id-token: write for npm trusted publishing).
 on:
   workflow_dispatch:
     inputs:
@@ -33,8 +34,9 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - name: Trusted publishing needs npm >= 11.5.1
-        run: npm install -g npm@11
-      - run: pnpm install --frozen-lockfile
+        run: npm install -g --ignore-scripts npm@11.21.0
+      # No dependency lifecycle scripts in the job that can mint publish credentials.
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test:coverage

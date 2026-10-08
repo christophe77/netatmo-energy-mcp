@@ -165,6 +165,7 @@ export function registerTools(
         device_id: z
           .string()
           .min(1)
+          .max(input.MAX_ID_LENGTH)
           .optional()
           .describe('Device ID from netatmo_list_devices. Omit for all devices.'),
       }),

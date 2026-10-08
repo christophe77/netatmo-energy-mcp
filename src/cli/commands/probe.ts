@@ -88,14 +88,16 @@ async function runProbe({ config, out, logger, argv }: CommandContext): Promise<
     `- Generated: ${new Date().toISOString()}`,
     `- Version: ${VERSION}`,
     `- History window: ${days} day(s)`,
-    '- Identifiers are replaced with placeholders; names are generic; location data is removed.',
+    '- Identifiers are replaced with placeholders; names are generic; coordinates, altitude, country and account data are removed. The IANA time zone is kept (needed to check day boundaries).',
   ];
   const h2 = (title: string) => md.push('', `## ${title}`, '');
   const attempt = async <T>(label: string, fn: () => Promise<T>): Promise<T | undefined> => {
     try {
       return await fn();
     } catch (error) {
-      const msg = error instanceof AppError ? `${error.code}: ${error.message}` : String(error);
+      const raw = error instanceof AppError ? `${error.code}: ${error.message}` : String(error);
+      // Netatmo error messages may quote device or home IDs.
+      const msg = san.text(raw);
       errors.push(`${label}: ${msg}`);
       out.line(`  ! ${label}: ${msg}`);
       return undefined;
@@ -377,7 +379,9 @@ async function runProbe({ config, out, logger, argv }: CommandContext): Promise<
       values.out ??
       path.join(config.paths.dir, 'probe', new Date().toISOString().replace(/[:.]/g, '-'));
     await ensureSecureDir(config.paths.dir, logger);
-    await fs.mkdir(dir, { recursive: true });
+    // Owner-only folder: responses.raw.json (with --raw) holds unsanitized data.
+    await fs.mkdir(path.dirname(dir), { recursive: true });
+    await ensureSecureDir(dir, logger);
     const sanitized = exchanges.map((e) => ({
       endpoint: e.endpoint,
       query: san.value(e.query),

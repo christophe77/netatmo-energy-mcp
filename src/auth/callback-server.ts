@@ -76,6 +76,12 @@ export async function startCallbackServer(opts: {
   code.catch(() => undefined);
 
   const handler: http.RequestListener = (req, res) => {
+    // Reject DNS-rebinding style requests: the browser redirect always targets a loopback host.
+    const host = (req.headers.host ?? '').replace(/:\d+$/, '').toLowerCase();
+    if (!['localhost', '127.0.0.1', '[::1]'].includes(host)) {
+      res.writeHead(400, PAGE_HEADERS).end(page('Bad request', 'Unexpected host.'));
+      return;
+    }
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (req.method !== 'GET' || url.pathname !== pathname) {
       res.writeHead(404, PAGE_HEADERS).end(page('Not found', 'Nothing to see here.'));

@@ -8,3 +8,7 @@ coverage/
 credentials.json
 *.lock.tmp
 .DS_Store
+
+# Probe output (may contain unsanitized data with --raw)
+probe/
+responses*.json

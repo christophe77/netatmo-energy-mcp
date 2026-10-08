@@ -5,17 +5,27 @@ import { historyModeSchema } from '../domain/views.js';
 import { SCALES } from '../netatmo/endpoints.js';
 import { PERIODS } from '../utils/dates.js';
 
+/** Upper bound for identifiers and names: Netatmo IDs are short; this blocks oversized input. */
+export const MAX_ID_LENGTH = 128;
+
 export const homeId = z
   .string()
   .min(1)
+  .max(MAX_ID_LENGTH)
   .optional()
   .describe('Home ID from netatmo_list_homes. Optional when the account has a single home.');
 
-export const roomId = z.string().min(1).optional().describe('Room ID from netatmo_list_rooms.');
+export const roomId = z
+  .string()
+  .min(1)
+  .max(MAX_ID_LENGTH)
+  .optional()
+  .describe('Room ID from netatmo_list_rooms.');
 
 export const roomName = z
   .string()
   .min(1)
+  .max(MAX_ID_LENGTH)
   .optional()
   .describe('Room name (case- and accent-insensitive). Use room_id or room_name.');
 
@@ -26,6 +36,7 @@ export const period = z
 
 export const from = z
   .string()
+  .max(40)
   .optional()
   .describe(
     'Range start, ISO 8601 (e.g. 2026-01-15 or 2026-01-15T07:30). Without an offset it is read in the home time zone.',
@@ -33,6 +44,7 @@ export const from = z
 
 export const to = z
   .string()
+  .max(40)
   .optional()
   .describe('Range end, ISO 8601. Defaults to now when "from" is given.');
 

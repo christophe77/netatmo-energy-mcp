@@ -39,6 +39,17 @@ export async function ensureSecureDir(
     }
   }
 
+  // Never re-permission a folder this tool does not own (e.g. NETATMO_MCP_CONFIG_DIR pointing
+  // at a home or project folder): warn instead.
+  const ours = created || (await containsOnlyOwnFiles(dir));
+  if (!ours) {
+    logger.warn(
+      'The configuration folder contains other files; its permissions were left unchanged. Use a dedicated folder.',
+      { dir },
+    );
+    return { created };
+  }
+
   if (platform === 'win32') {
     if (!created && !opts.forceAcl) return { created };
     const aclRestricted = restrictWindowsAcl(dir, logger);
@@ -46,8 +57,18 @@ export async function ensureSecureDir(
   }
 
   if (!created) {
-    // Tighten a pre-existing directory that is group/world accessible.
     const stat = await fs.stat(dir);
+    const uid = process.getuid?.();
+    if (uid !== undefined && stat.uid !== uid) {
+      logger.warn(
+        'The configuration folder is owned by another user; permissions left unchanged.',
+        {
+          dir,
+        },
+      );
+      return { created };
+    }
+    // Tighten a pre-existing directory that is group/world accessible.
     if ((stat.mode & 0o077) !== 0) {
       await fs.chmod(dir, DIR_MODE);
       logger.warn('Tightened permissions on the configuration directory', { dir });
@@ -56,8 +77,17 @@ export async function ensureSecureDir(
   return { created };
 }
 
+const OWN_ENTRY =
+  /^(credentials\.json|credentials\.lock(\..+\.stale)?|probe|\.credentials\.json\..+\.tmp)$/;
+
+/** True if `dir` is empty or holds only files created by netatmo-energy-mcp. */
+export async function containsOnlyOwnFiles(dir: string): Promise<boolean> {
+  const entries = await fs.readdir(dir);
+  return entries.every((e) => OWN_ENTRY.test(e));
+}
+
 /** Absolute path to a Windows system tool, so PATH entries (e.g. Git Bash coreutils) cannot shadow it. */
-function system32(exe: string): string {
+export function system32(exe: string): string {
   const root = process.env.SystemRoot ?? process.env.windir ?? 'C:\\Windows';
   return path.win32.join(root, 'System32', exe);
 }
@@ -168,9 +198,13 @@ export async function writeFileAtomic(
   try {
     await handle.writeFile(content, 'utf8');
     await handle.sync();
-  } finally {
+  } catch (error) {
     await handle.close();
+    // Do not leave a partial copy of the secrets behind.
+    await fs.rm(tmp, { force: true });
+    throw error;
   }
+  await handle.close();
 
   const delays = [25, 50, 100, 200, 400, 600, 800];
   for (let attempt = 0; ; attempt++) {

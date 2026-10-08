@@ -18,8 +18,16 @@ export interface Logger {
 
 const RANK: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, error: 40, silent: 99 };
 
-const SENSITIVE_KEY =
-  /^(access_?token|refresh_?token|client_?secret|authorization|password|code_?verifier|auth_?code|token)$/i;
+/** Keys whose values are always redacted, wherever they appear. */
+const SENSITIVE_KEY = /(token|secret|password|passwd|authorization|cookie|api_?key|verifier)/i;
+/**
+ * Keys redacted only when they hold a string: "code" is an OAuth authorization code as a
+ * string, but a Netatmo error code as a number (kept for diagnostics).
+ */
+const SENSITIVE_STRING_KEY = /^(code|auth_?code|state)$/i;
+/** Credentials inside URL-encoded bodies or query strings. */
+const FORM_SECRET_PATTERN =
+  /\b(access_token|refresh_token|client_secret|code|code_verifier|state)=[^&\s"']+/gi;
 
 /** Netatmo tokens look like `<24 hex>|<32 hex>`. */
 const TOKEN_PATTERN = /\b[0-9a-f]{24}\|[0-9a-f]{32}\b/gi;
@@ -29,7 +37,10 @@ export const REDACTED = '[REDACTED]';
 
 /** Redact token-shaped substrings from free text. */
 export function redactText(text: string): string {
-  return text.replace(TOKEN_PATTERN, REDACTED).replace(BEARER_PATTERN, `Bearer ${REDACTED}`);
+  return text
+    .replace(TOKEN_PATTERN, REDACTED)
+    .replace(BEARER_PATTERN, `Bearer ${REDACTED}`)
+    .replace(FORM_SECRET_PATTERN, (_m, key: string) => `${key}=${REDACTED}`);
 }
 
 /** Deep-copy `value` with sensitive keys and token-shaped strings redacted. */
@@ -39,11 +50,15 @@ export function redact(value: unknown, depth = 0): unknown {
   if (value instanceof Error) {
     return { name: value.name, message: redactText(value.message) };
   }
+  if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) return '[binary]';
   if (Array.isArray(value)) return value.map((v) => redact(v, depth + 1));
   if (value !== null && typeof value === 'object') {
     const out: Record<string, unknown> = {};
     for (const [key, v] of Object.entries(value)) {
-      out[key] = SENSITIVE_KEY.test(key) && v != null && v !== '' ? REDACTED : redact(v, depth + 1);
+      const sensitive =
+        (SENSITIVE_KEY.test(key) && v != null && v !== '') ||
+        (SENSITIVE_STRING_KEY.test(key) && typeof v === 'string' && v !== '');
+      out[key] = sensitive ? REDACTED : redact(v, depth + 1);
     }
     return out;
   }

@@ -5,16 +5,24 @@
  * - Device MACs, home IDs, room/schedule IDs → consistent fake IDs (same input, same output) in
  *   ranges real devices never use: 00:00:00:00:xx:xx, fa4e…, 9000000000+
  * - Home/room/module/schedule/zone names → "Home 1", "Room 2", …
- * - Location and account data (coordinates, altitude, user, emails, addresses) → removed
+ * - Location and account data (coordinates, altitude, country, user, emails, addresses) → removed
+ * - Identifiers embedded in free text (error messages) → replaced
+ * The IANA time zone is kept: it is needed to check day-bucket alignment and is coarse.
  * Numbers, types, modes and timestamps are kept: they are what validation needs.
  */
 
 const MAC = /^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/i;
 const OBJECT_ID = /^[0-9a-f]{24}$/i;
 const DIGITS = /^\d+$/;
+/** MACs inside text, with ":" or "-" separators. */
+const EMBEDDED_MAC = /\b[0-9a-f]{2}(?:[:-][0-9a-f]{2}){5}\b/gi;
+/** 12-hex MACs without separators, as found in serial-number-like fields. */
+const EMBEDDED_BARE_MAC = /\b[0-9a-f]{12}\b/gi;
+const EMBEDDED_OBJECT_ID = /\b[0-9a-f]{24}\b/gi;
 
 const DROP_KEYS = new Set([
   'coordinates',
+  'country',
   'altitude',
   'user',
   'email',
@@ -119,9 +127,22 @@ export class Sanitizer {
       }
       return out;
     }
-    if (typeof input === 'string' && (MAC.test(input) || OBJECT_ID.test(input)))
-      return this.id(input);
+    if (typeof input === 'string') {
+      if (MAC.test(input) || OBJECT_ID.test(input)) return this.id(input);
+      return this.text(input);
+    }
     return input;
+  }
+
+  /**
+   * Replace identifiers embedded in free text (e.g. Netatmo error messages): MAC addresses
+   * with or without separators and 24-hex home/schedule IDs.
+   */
+  text(input: string): string {
+    return input
+      .replace(EMBEDDED_MAC, (m) => String(this.id(m.toLowerCase().replaceAll('-', ':'))))
+      .replace(EMBEDDED_BARE_MAC, (m) => String(this.id(m.toLowerCase().replace(/(..)(?!$)/g, '$1:'))))
+      .replace(EMBEDDED_OBJECT_ID, (m) => String(this.id(m.toLowerCase())));
   }
 
   private idLike(v: unknown): unknown {

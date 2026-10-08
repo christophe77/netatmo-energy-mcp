@@ -99,7 +99,7 @@ async function runLogin({ config, out, logger, argv }: CommandContext): Promise<
         out.error('--manual needs an interactive terminal.');
         return 2;
       }
-      code = parseRedirectUrl(await prompt('Redirected URL: '), state);
+      code = parseRedirectUrl(await prompt('Redirected URL: '), state, config.redirectUri);
     } else {
       const server = await startCallbackServer({
         redirectUri: config.redirectUri,
@@ -144,8 +144,13 @@ async function runLogin({ config, out, logger, argv }: CommandContext): Promise<
     }));
 
     out.line();
-    out.line('Logged in. Tokens saved to:');
+    out.line('Logged in. Tokens and the app client ID and secret were saved to:');
     out.line(`  ${config.paths.credentials}`);
+    if (config.envClient.clientSecret) {
+      out.line(
+        'The secret from NETATMO_CLIENT_SECRET was stored too, so MCP client configurations need no secrets. Run "logout" to delete the file.',
+      );
+    }
     const missing = READ_ONLY_SCOPES.filter((s) => !tokens.scope.includes(s));
     if (tokens.scope.length > 0 && missing.length > 0) {
       out.line(`Warning: the granted scope is missing ${missing.join(', ')}.`);

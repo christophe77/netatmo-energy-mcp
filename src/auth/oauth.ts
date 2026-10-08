@@ -100,12 +100,25 @@ export function parseRedirectParams(params: URLSearchParams, expectedState: stri
 }
 
 /** For `login --manual`: the user pastes the full URL their browser was redirected to. */
-export function parseRedirectUrl(pasted: string, expectedState: string): string {
+export function parseRedirectUrl(
+  pasted: string,
+  expectedState: string,
+  redirectUri?: string,
+): string {
   let url: URL;
   try {
     url = new URL(pasted.trim());
   } catch {
     throw new OAuthError('invalid_redirect', 'That does not look like a URL.');
+  }
+  if (redirectUri) {
+    const expected = new URL(redirectUri);
+    if (url.origin !== expected.origin || url.pathname !== expected.pathname) {
+      throw new OAuthError(
+        'invalid_redirect',
+        `The pasted URL does not start with the redirect URI ${expected.origin}${expected.pathname}.`,
+      );
+    }
   }
   return parseRedirectParams(url.searchParams, expectedState);
 }

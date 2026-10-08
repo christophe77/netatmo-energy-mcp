@@ -73,12 +73,12 @@ export class TokenManager implements TokenProvider {
   async getAccessToken(signal?: AbortSignal): Promise<string> {
     await this.retryPersist();
     if (this.current && this.isFresh(this.current)) return this.current.accessToken;
-    const tokens = await this.refresh(undefined, signal);
+    const tokens = await abortable(this.refresh(undefined), signal);
     return tokens.accessToken;
   }
 
   async handleRejectedToken(rejectedToken: string, signal?: AbortSignal): Promise<string> {
-    const tokens = await this.refresh(rejectedToken, signal);
+    const tokens = await abortable(this.refresh(rejectedToken), signal);
     if (tokens.accessToken === rejectedToken) {
       throw new AuthRequiredError(
         'Netatmo rejected the access token, and refreshing did not help.',
@@ -91,17 +91,19 @@ export class TokenManager implements TokenProvider {
     return tokens.expiresAt - this.refreshMarginMs > this.clock.now();
   }
 
-  private refresh(rejectedToken: string | undefined, signal?: AbortSignal): Promise<TokenSet> {
-    this.inflight ??= this.refreshUnderLock(rejectedToken, signal).finally(() => {
+  /**
+   * The refresh itself is never tied to a caller's AbortSignal: if a cancelled tool call
+   * aborted the token request after Netatmo had rotated the refresh token, the new pair would
+   * be lost. Callers stop waiting via abortable(); the refresh completes and is saved.
+   */
+  private refresh(rejectedToken: string | undefined): Promise<TokenSet> {
+    this.inflight ??= this.refreshUnderLock(rejectedToken).finally(() => {
       this.inflight = undefined;
     });
     return this.inflight;
   }
 
-  private async refreshUnderLock(
-    rejectedToken: string | undefined,
-    signal?: AbortSignal,
-  ): Promise<TokenSet> {
+  private async refreshUnderLock(rejectedToken: string | undefined): Promise<TokenSet> {
     const { store } = this.opts;
     return store.withLock(async () => {
       const stored = this.unpersisted ?? (await store.read());
@@ -136,7 +138,7 @@ export class TokenManager implements TokenProvider {
             refreshToken: tokens.refreshToken,
             now: this.clock.now(),
           },
-          { ...(this.opts.fetch && { fetch: this.opts.fetch }), ...(signal && { signal }) },
+          this.opts.fetch ? { fetch: this.opts.fetch } : {},
         );
         next = res.tokens;
       } catch (error) {
@@ -191,4 +193,26 @@ export class TokenManager implements TokenProvider {
       // Still failing; keep serving from memory.
     }
   }
+}
+
+/** Wait for `promise` unless `signal` aborts first; the underlying work keeps running. */
+function abortable<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(signal.reason as Error);
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(signal.reason as Error);
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (v) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(v);
+      },
+      (e: unknown) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(e instanceof Error ? e : new Error(String(e)));
+      },
+    );
+  });
 }

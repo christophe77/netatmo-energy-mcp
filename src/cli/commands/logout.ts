@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { CredentialStore } from '../../auth/credential-store.js';
 import type { Command } from '../index.js';
 
@@ -15,6 +16,9 @@ export const logoutCommand: Command = {
     );
     out.line(
       "Netatmo has no token revocation endpoint. To revoke access on Netatmo's side as well, delete your app at https://dev.netatmo.com/apps (or regenerate its client secret).",
+    );
+    out.line(
+      `Probe reports (if any) remain in ${config.paths.dir}${path.sep}probe; delete that folder too if you no longer need them.`,
     );
     if (config.envClient.clientId || config.envClient.clientSecret) {
       out.line(
