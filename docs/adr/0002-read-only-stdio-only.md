@@ -1,6 +1,7 @@
 # ADR-0002: Read-only, stdio-only v0.1
 
-Status: Accepted (2026-10-08)
+Status: Accepted (2026-10-08). The read-only part is superseded by
+[ADR-0012](0012-opt-in-write-mode.md) (opt-in write mode); stdio-only still holds.
 Date: 2026-10-08
 
 ## Context

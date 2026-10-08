@@ -50,6 +50,18 @@ export const scheduleSchema = z.looseObject({
   selected: bool,
   away_temp: num,
   hg_temp: num,
+  /** Weekly timetable: zone_id applies from m_offset (minutes since Monday 00:00). */
+  timetable: z.array(z.looseObject({ zone_id: z.number(), m_offset: z.number() })).nullish(),
+  zones: z
+    .array(
+      z.looseObject({
+        id: z.number(),
+        name: str,
+        type: num,
+        rooms: z.array(z.looseObject({ id, therm_setpoint_temperature: num })).nullish(),
+      }),
+    )
+    .nullish(),
 });
 
 export const homeSchema = z.looseObject({

@@ -2,8 +2,10 @@
 
 `netatmo-energy-mcp` uses Netatmo's official OAuth2 **authorization code**
 flow. You sign in on netatmo.com in your browser; this tool never sees
-your Netatmo password. It requests only the read-only `read_thermostat`
-scope, so it cannot change your heating.
+your Netatmo password. By default it requests only the read-only
+`read_thermostat` scope, so it cannot change your heating. `login --write`
+also requests `write_thermostat` to enable
+[write mode](configuration.md#write-mode).
 
 ## 1. Create your Netatmo developer app
 

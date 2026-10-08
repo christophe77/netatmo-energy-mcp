@@ -1,5 +1,6 @@
-import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
-import { createRuntime } from '../../app.js';
+import { serveStdio } from '@modelcontextprotocol/server/stdio';
+import { createRuntime, isWriteModeEnabled } from '../../app.js';
+import { CredentialStore } from '../../auth/credential-store.js';
 import { createMcpServer } from '../../mcp/server.js';
 import type { Command } from '../index.js';
 
@@ -13,30 +14,38 @@ export const serveCommand: Command = {
       return 2;
     }
     // stdout carries the MCP protocol; everything else goes to stderr through the logger.
-    const runtime = createRuntime(config, logger);
-    const server = createMcpServer(runtime.service, runtime.analytics, logger);
-    const transport = new StdioServerTransport();
+    const stored = await new CredentialStore(config.paths, logger).read().catch(() => undefined);
+    const writeMode = isWriteModeEnabled(config, stored);
+    const runtime = createRuntime(config, logger, { allowWrites: writeMode });
 
-    const closed = new Promise<void>((resolve) => {
-      transport.onclose = () => {
-        resolve();
+    // serveStdio negotiates the protocol era per connection (2025 initialize handshake or
+    // 2026-07-28 server/discover) and builds the server from this factory.
+    const handle = serveStdio(
+      () =>
+        createMcpServer(runtime.service, runtime.analytics, logger, {
+          control: runtime.control,
+          writeMode,
+        }),
+      {
+        onerror: (error) => {
+          logger.error('MCP transport error', { error });
+        },
+      },
+    );
+    logger.info(
+      `netatmo-energy-mcp MCP server running on stdio (${writeMode ? 'WRITE MODE' : 'read-only'})`,
+      { configDir: config.paths.dir },
+    );
+
+    await new Promise<void>((resolve) => {
+      const stop = () => {
+        void handle.close().finally(resolve);
       };
       // The spec asks stdio servers to exit promptly when stdin ends.
-      process.stdin.once('end', () => {
-        void server.close().finally(resolve);
-      });
-      for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-        process.once(signal, () => {
-          void server.close().finally(resolve);
-        });
-      }
+      process.stdin.once('end', stop);
+      process.stdin.once('close', stop);
+      for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, stop);
     });
-
-    await server.connect(transport);
-    logger.info('netatmo-energy-mcp MCP server running on stdio (read-only)', {
-      configDir: config.paths.dir,
-    });
-    await closed;
     return 0;
   },
 };

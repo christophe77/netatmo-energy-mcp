@@ -2,9 +2,9 @@
 
 Before the MCP tools and analytics are built (Phases 4 and 5), the
 assumptions in [api-capabilities.md](api-capabilities.md) are checked
-against a real installation. Everything here is **read-only**: the tool
+against a real installation. Sections 1 to 7 are **read-only**: the tool
 only holds the `read_thermostat` scope and cannot change heating
-settings.
+settings. [Section 8](#8-write-mode) covers the opt-in write mode.
 
 The package is not published to npm yet, so run it from a local build.
 
@@ -116,3 +116,44 @@ The maintainer updates `api-capabilities.md`, replacing UNCERTAIN labels
 with dated observations. Sanitized fixtures are derived from
 `responses.json` after review. Real IDs, names, addresses, coordinates
 and tokens are never committed.
+
+## 8. Write mode
+
+These steps check the write endpoints on a real installation. They
+**change the heating**, briefly and reversibly. Do them when a short
+change is harmless, preferably in a room nobody is using.
+
+1. Log in with write access, then confirm write mode is active:
+
+   ```bash
+   node dist/index.js login --write
+   node dist/index.js status
+   ```
+
+2. Connect an MCP client (or the MCP Inspector) to `node dist/index.js`
+   and run, confirming each change when asked:
+
+   | Step | Ask the assistant                                                    | Check in the Netatmo app                                 |
+   | ---- | -------------------------------------------------------------------- | -------------------------------------------------------- |
+   | a    | "Set <room> to 18 °C for 10 minutes."                                | Manual setpoint with an end time; back to schedule after |
+   | b    | "Put <room> back on its schedule."                                   | Room follows the schedule again                          |
+   | c    | "Switch the home to frost guard until <in 15 minutes>."              | Frost-guard mode, then schedule mode after the end time  |
+   | d    | "Switch the home back to schedule mode."                             | Schedule mode                                            |
+   | e    | "Create a schedule called MCP test, copied from the active one."     | New schedule listed, **not** active                      |
+   | f    | "In MCP test, set <room> to 17 °C in the Night zone."                | Only that value changed; timetable identical             |
+   | g    | "Rename MCP test to MCP test 2." (experimental)                      | Name changed, or a clear error                           |
+   | h    | Delete "MCP test 2" **in the Netatmo app** (no API exists for this). | Schedule gone                                            |
+
+   Optional, experimental: with two schedules, "Switch to schedule mode
+   using <other schedule>" from away mode tests `setthermmode` with
+   `schedule_id`. Switch back afterwards.
+
+3. Check `changes.log` in the configuration folder: one line per change,
+   with `"outcome":"applied"`.
+
+4. Report results in an issue, without IDs, names or the log contents.
+   Most useful: whether `synchomeschedule` kept the schedule exactly as
+   expected (step f), and the outcome of the experimental steps.
+
+To return to read-only mode, run `node dist/index.js login` without
+`--write`, or set `NETATMO_MCP_WRITE=0`.

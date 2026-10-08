@@ -1,7 +1,12 @@
 import type { TokenProvider } from '../auth/token-manager.js';
 import type { FetchFn } from '../auth/oauth.js';
 import type { AppError } from '../errors.js';
-import { InvalidArgumentError, InvalidResponseError, NetatmoUnavailableError } from '../errors.js';
+import {
+  InvalidArgumentError,
+  InvalidResponseError,
+  NetatmoUnavailableError,
+  PermissionDeniedError,
+} from '../errors.js';
 import { systemClock, type Clock } from '../utils/clock.js';
 import { silentLogger, type Logger } from '../utils/logger.js';
 import { USER_AGENT } from '../version.js';
@@ -20,6 +25,7 @@ import {
 import { classifyApiError } from './errors.js';
 import { decodeMeasureBody, type DecodedMeasures } from './measures.js';
 import { RateLimiter } from './rate-limiter.js';
+import { WRITE_ENDPOINTS, type WriteEndpoint } from './write-endpoints.js';
 import {
   envelopeSchema,
   homesDataBodySchema,
@@ -67,7 +73,14 @@ export interface NetatmoClientOptions {
   cacheTtlMs?: { homesData?: number; homeStatus?: number };
   /** Observer for raw exchanges (used by `probe`). */
   onExchange?: (exchange: RawExchange) => void;
+  /**
+   * Allow calls to the write endpoints (opt-in write mode, ADR-0012). Default false: the client
+   * refuses every write.
+   */
+  allowWrites?: boolean;
 }
+
+export type WriteParams = Record<string, string | number | undefined>;
 
 export interface RoomMeasureQuery {
   homeId: string;
@@ -202,6 +215,106 @@ export class NetatmoClient {
       types: q.types,
       scale: q.scale,
     };
+  }
+
+  /** Whether this client may call write endpoints. */
+  get writesAllowed(): boolean {
+    return this.opts.allowWrites === true;
+  }
+
+  /**
+   * POST to a write endpoint (opt-in write mode only, ADR-0012).
+   * Simple endpoints send form parameters; schedule endpoints send `params` in the query string
+   * and the schedule as a JSON body (as used by pyatmo / Home Assistant).
+   * Writes are never retried after a network error or a server error: the change may or may not
+   * have been applied. The only retry is after a rejected token, which happens before execution.
+   * Caches are cleared afterwards so the next read reflects the change.
+   */
+  async write(
+    endpoint: WriteEndpoint,
+    params: WriteParams,
+    json?: unknown,
+    options: RequestOptions = {},
+  ): Promise<unknown> {
+    if (!this.writesAllowed) {
+      throw new PermissionDeniedError('Write mode is not enabled: this server is read-only.', {
+        hint: 'Run "netatmo-energy-mcp login --write" to grant write access, then restart the MCP client.',
+      });
+    }
+    const url = new URL(`${this.baseUrl}${WRITE_ENDPOINTS[endpoint]}`);
+    const form = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value === undefined) continue;
+      if (json === undefined) form.set(key, String(value));
+      else url.searchParams.set(key, String(value));
+    }
+    const signal = options.signal;
+    let tokenRefreshed = false;
+    try {
+      for (;;) {
+        signal?.throwIfAborted();
+        await this.limiter.acquire(signal);
+        const token = await this.opts.tokens.getAccessToken(signal);
+        const timeout = AbortSignal.timeout(this.timeoutMs);
+        let res: Response;
+        try {
+          res = await this.fetch(url.toString(), {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/json',
+              'User-Agent': USER_AGENT,
+              'Content-Type':
+                json === undefined
+                  ? 'application/x-www-form-urlencoded;charset=UTF-8'
+                  : 'application/json',
+            },
+            body: json === undefined ? form.toString() : JSON.stringify(json),
+            signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+          });
+        } catch (error) {
+          if (signal?.aborted) throw signal.reason;
+          throw new NetatmoUnavailableError(
+            `Could not complete the ${endpoint} request; the change may or may not have been applied.`,
+            { hint: 'Check the current status before trying again.', cause: error },
+          );
+        }
+        const text = await res.text();
+        let body: unknown;
+        try {
+          body = text === '' ? undefined : JSON.parse(text);
+        } catch {
+          body = undefined;
+        }
+        if (res.ok) {
+          const status = (body as { status?: unknown } | undefined)?.status;
+          if (status !== undefined && status !== 'ok') {
+            throw new InvalidResponseError(`Netatmo did not confirm the ${endpoint} request.`);
+          }
+          return body;
+        }
+        const classified = classifyApiError(
+          res.status,
+          body,
+          res.headers.get('retry-after'),
+          this.clock.now(),
+        );
+        if (classified.tokenRejected && !tokenRefreshed) {
+          tokenRefreshed = true;
+          await this.opts.tokens.handleRejectedToken(token, signal);
+          continue;
+        }
+        if (res.status >= 500) {
+          throw new NetatmoUnavailableError(
+            `Netatmo returned HTTP ${res.status} for ${endpoint}; the change may or may not have been applied.`,
+            { hint: 'Check the current status before trying again.' },
+          );
+        }
+        throw classified.error;
+      }
+    } finally {
+      this.clearCache();
+    }
   }
 
   /** Drop cached topology/status (e.g. after the user renames a room). */

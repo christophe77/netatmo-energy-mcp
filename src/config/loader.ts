@@ -1,6 +1,6 @@
 import type { LogLevel } from '../utils/logger.js';
 import { configPaths, resolveConfigDir, type ConfigPaths } from './paths.js';
-import { DEFAULT_REDIRECT_URI, envSchema } from './schema.js';
+import { DEFAULT_REDIRECT_URI, DEFAULT_WRITE_LIMITS, envSchema } from './schema.js';
 
 export class ConfigError extends Error {
   override name = 'ConfigError';
@@ -12,6 +12,16 @@ export interface AppConfig {
   envClient: { clientId?: string; clientSecret?: string };
   redirectUri: string;
   logLevel: LogLevel;
+  /** "off" when NETATMO_MCP_WRITE=0; otherwise write mode follows the granted token scope. */
+  write: 'auto' | 'off';
+  limits: WriteLimits;
+}
+
+export interface WriteLimits {
+  minTemp: number;
+  maxTemp: number;
+  maxSetpointHours: number;
+  defaultSetpointHours: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -32,5 +42,27 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     envClient,
     redirectUri: e.NETATMO_REDIRECT_URI ?? DEFAULT_REDIRECT_URI,
     logLevel: e.NETATMO_MCP_LOG_LEVEL ?? 'info',
+    write: e.NETATMO_MCP_WRITE === '0' ? 'off' : 'auto',
+    limits: writeLimits(e),
+  };
+}
+
+function writeLimits(e: {
+  NETATMO_MCP_MIN_TEMP?: number | undefined;
+  NETATMO_MCP_MAX_TEMP?: number | undefined;
+  NETATMO_MCP_MAX_SETPOINT_HOURS?: number | undefined;
+}): WriteLimits {
+  const minTemp = e.NETATMO_MCP_MIN_TEMP ?? DEFAULT_WRITE_LIMITS.minTemp;
+  const maxTemp = e.NETATMO_MCP_MAX_TEMP ?? DEFAULT_WRITE_LIMITS.maxTemp;
+  if (minTemp >= maxTemp) {
+    throw new ConfigError('NETATMO_MCP_MIN_TEMP must be lower than NETATMO_MCP_MAX_TEMP.');
+  }
+  const maxSetpointHours =
+    e.NETATMO_MCP_MAX_SETPOINT_HOURS ?? DEFAULT_WRITE_LIMITS.maxSetpointHours;
+  return {
+    minTemp,
+    maxTemp,
+    maxSetpointHours,
+    defaultSetpointHours: Math.min(DEFAULT_WRITE_LIMITS.defaultSetpointHours, maxSetpointHours),
   };
 }

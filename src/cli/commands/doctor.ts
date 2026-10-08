@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
-import { createRuntime } from '../../app.js';
+import { createRuntime, isWriteModeEnabled } from '../../app.js';
+import { WRITE_SCOPE } from '../../netatmo/write-endpoints.js';
 import type { StoredCredentials } from '../../auth/credential-store.js';
 import { READ_ONLY_SCOPES } from '../../auth/oauth.js';
 import {
@@ -90,16 +91,21 @@ async function runDoctor({ config, out, logger }: CommandContext): Promise<numbe
   }
   const granted = tokens.scope;
   const missing = READ_ONLY_SCOPES.filter((s) => !granted.includes(s));
-  const writeScopes = granted.filter((s) => s.startsWith('write_'));
   report(
-    missing.length === 0 && writeScopes.length === 0
-      ? 'ok'
-      : granted.length === 0
-        ? 'warn'
-        : 'fail',
+    missing.length === 0 ? 'ok' : granted.length === 0 ? 'warn' : 'fail',
     granted.length === 0
       ? 'Granted scope not reported by Netatmo'
-      : `Granted scope: ${granted.join(' ')}${writeScopes.length > 0 ? ' (write scopes are not needed; log in again)' : ''}`,
+      : `Granted scope: ${granted.join(' ')}`,
+  );
+  const writeMode = isWriteModeEnabled(config, stored);
+  out.line(
+    `[info] Write mode: ${
+      writeMode
+        ? 'ENABLED. The assistant can change setpoints, modes and schedules, after your confirmation.'
+        : granted.includes(WRITE_SCOPE)
+          ? 'disabled by NETATMO_MCP_WRITE=0 (the token allows writes)'
+          : 'disabled (read-only). Enable with "login --write".'
+    }`,
   );
 
   try {

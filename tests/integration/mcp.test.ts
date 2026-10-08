@@ -106,7 +106,10 @@ async function connect(opts: ApiOptions & { loggedIn?: boolean } = {}) {
       },
     }));
   }
-  const server = createMcpServer(runtime.service, runtime.analytics, silentLogger);
+  const server = createMcpServer(runtime.service, runtime.analytics, silentLogger, {
+    control: runtime.control,
+    writeMode: false,
+  });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
   const client = new Client({ name: 'test', version: '0.0.0' });
@@ -133,6 +136,7 @@ const EXPECTED_TOOLS = [
   'netatmo_get_home',
   'netatmo_get_home_status',
   'netatmo_get_room_status',
+  'netatmo_get_schedules',
   'netatmo_get_setpoint_history',
   'netatmo_get_temperature_history',
   'netatmo_list_devices',

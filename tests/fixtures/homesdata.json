@@ -5,7 +5,7 @@
         "id": "000000000000000000000001",
         "name": "Test Home",
         "altitude": 42,
-        "coordinates": [2.0, 48.0],
+        "coordinates": [2, 48],
         "country": "FR",
         "timezone": "Europe/Paris",
         "temperature_control_mode": "heating",
@@ -30,7 +30,11 @@
             "type": "bedroom",
             "module_ids": ["70:ee:50:00:00:05"]
           },
-          { "id": "1000000004", "name": "Bureau", "type": "office" }
+          {
+            "id": "1000000004",
+            "name": "Bureau",
+            "type": "office"
+          }
         ],
         "modules": [
           {
@@ -92,13 +96,303 @@
             "selected": true,
             "away_temp": 14,
             "hg_temp": 7,
-            "timetable": [{ "zone_id": 0, "m_offset": 0 }],
+            "timetable": [
+              {
+                "zone_id": 1,
+                "m_offset": 0
+              },
+              {
+                "zone_id": 0,
+                "m_offset": 390
+              },
+              {
+                "zone_id": 4,
+                "m_offset": 540
+              },
+              {
+                "zone_id": 0,
+                "m_offset": 1050
+              },
+              {
+                "zone_id": 1,
+                "m_offset": 1350
+              },
+              {
+                "zone_id": 1,
+                "m_offset": 1440
+              },
+              {
+                "zone_id": 0,
+                "m_offset": 1830
+              },
+              {
+                "zone_id": 4,
+                "m_offset": 1980
+              },
+              {
+                "zone_id": 0,
+                "m_offset": 2490
+              },
+              {
+                "zone_id": 1,
+                "m_offset": 2790
+              },
+              {
+                "zone_id": 1,
+                "m_offset": 2880
+              },
+              {
+                "zone_id": 0,
+                "m_offset": 3270
+              },
+              {
+                "zone_id": 4,
+                "m_offset": 3420
+              },
+              {
+                "zone_id": 0,
+                "m_offset": 3930
+              },
+              {
+                "zone_id": 1,
+                "m_offset": 4230
+              },
+              {
+                "zone_id": 1,
+                "m_offset": 4320
+              },
+              {
+                "zone_id": 0,
+                "m_offset": 4710
+              },
+              {
+                "zone_id": 4,
+                "m_offset": 4860
+              },
+              {
+                "zone_id": 0,
+                "m_offset": 5370
+              },
+              {
+                "zone_id": 1,
+                "m_offset": 5670
+              },
+              {
+                "zone_id": 1,
+                "m_offset": 5760
+              },
+              {
+                "zone_id": 0,
+                "m_offset": 6150
+              },
+              {
+                "zone_id": 4,
+                "m_offset": 6300
+              },
+              {
+                "zone_id": 0,
+                "m_offset": 6810
+              },
+              {
+                "zone_id": 1,
+                "m_offset": 7110
+              },
+              {
+                "zone_id": 1,
+                "m_offset": 7200
+              },
+              {
+                "zone_id": 0,
+                "m_offset": 7590
+              },
+              {
+                "zone_id": 4,
+                "m_offset": 7740
+              },
+              {
+                "zone_id": 0,
+                "m_offset": 8250
+              },
+              {
+                "zone_id": 1,
+                "m_offset": 8550
+              },
+              {
+                "zone_id": 1,
+                "m_offset": 8640
+              },
+              {
+                "zone_id": 0,
+                "m_offset": 9030
+              },
+              {
+                "zone_id": 4,
+                "m_offset": 9180
+              },
+              {
+                "zone_id": 0,
+                "m_offset": 9690
+              },
+              {
+                "zone_id": 1,
+                "m_offset": 9990
+              }
+            ],
             "zones": [
               {
                 "id": 0,
                 "name": "Confort",
                 "type": 0,
-                "rooms": [{ "id": "1000000001", "therm_setpoint_temperature": 20 }]
+                "rooms": [
+                  {
+                    "id": "1000000001",
+                    "therm_setpoint_temperature": 20
+                  },
+                  {
+                    "id": "1000000002",
+                    "therm_setpoint_temperature": 19
+                  },
+                  {
+                    "id": "1000000003",
+                    "therm_setpoint_temperature": 19
+                  },
+                  {
+                    "id": "1000000004",
+                    "therm_setpoint_temperature": 19
+                  }
+                ]
+              },
+              {
+                "id": 1,
+                "name": "Nuit",
+                "type": 1,
+                "rooms": [
+                  {
+                    "id": "1000000001",
+                    "therm_setpoint_temperature": 17
+                  },
+                  {
+                    "id": "1000000002",
+                    "therm_setpoint_temperature": 17
+                  },
+                  {
+                    "id": "1000000003",
+                    "therm_setpoint_temperature": 17
+                  },
+                  {
+                    "id": "1000000004",
+                    "therm_setpoint_temperature": 16
+                  }
+                ]
+              },
+              {
+                "id": 4,
+                "name": "Eco",
+                "type": 5,
+                "rooms": [
+                  {
+                    "id": "1000000001",
+                    "therm_setpoint_temperature": 17
+                  },
+                  {
+                    "id": "1000000002",
+                    "therm_setpoint_temperature": 16
+                  },
+                  {
+                    "id": "1000000003",
+                    "therm_setpoint_temperature": 16
+                  },
+                  {
+                    "id": "1000000004",
+                    "therm_setpoint_temperature": 16
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "000000000000000000000102",
+            "name": "Vacances",
+            "type": "therm",
+            "default": false,
+            "selected": false,
+            "away_temp": 12,
+            "hg_temp": 7,
+            "timetable": [
+              {
+                "zone_id": 4,
+                "m_offset": 0
+              }
+            ],
+            "zones": [
+              {
+                "id": 0,
+                "name": "Confort",
+                "type": 0,
+                "rooms": [
+                  {
+                    "id": "1000000001",
+                    "therm_setpoint_temperature": 19
+                  },
+                  {
+                    "id": "1000000002",
+                    "therm_setpoint_temperature": 18
+                  },
+                  {
+                    "id": "1000000003",
+                    "therm_setpoint_temperature": 18
+                  },
+                  {
+                    "id": "1000000004",
+                    "therm_setpoint_temperature": 18
+                  }
+                ]
+              },
+              {
+                "id": 1,
+                "name": "Nuit",
+                "type": 1,
+                "rooms": [
+                  {
+                    "id": "1000000001",
+                    "therm_setpoint_temperature": 16
+                  },
+                  {
+                    "id": "1000000002",
+                    "therm_setpoint_temperature": 16
+                  },
+                  {
+                    "id": "1000000003",
+                    "therm_setpoint_temperature": 16
+                  },
+                  {
+                    "id": "1000000004",
+                    "therm_setpoint_temperature": 16
+                  }
+                ]
+              },
+              {
+                "id": 4,
+                "name": "Eco",
+                "type": 5,
+                "rooms": [
+                  {
+                    "id": "1000000001",
+                    "therm_setpoint_temperature": 15
+                  },
+                  {
+                    "id": "1000000002",
+                    "therm_setpoint_temperature": 15
+                  },
+                  {
+                    "id": "1000000003",
+                    "therm_setpoint_temperature": 15
+                  },
+                  {
+                    "id": "1000000004",
+                    "therm_setpoint_temperature": 15
+                  }
+                ]
               }
             ]
           }

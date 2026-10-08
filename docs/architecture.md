@@ -15,7 +15,8 @@ Status: accepted 2026-10-08. Sections are implemented phase by phase; see the RE
 
 **Non-goals for v0.1**
 
-- Any write operation (setpoints, modes, schedules).
+- Any write operation (setpoints, modes, schedules). Added in v0.2 as an
+  opt-in mode with user confirmation ([ADR-0012](adr/0012-opt-in-write-mode.md)).
 - HTTP/SSE transport, remote hosting, multi-user deployment.
 - Weather data, thermal modelling, predictions (see [roadmap](roadmap.md)).
 - Energy or gas consumption figures, which the API does not provide.
@@ -49,7 +50,7 @@ flowchart LR
   AUTH <--> FS
   CLI --> AUTH
   CLI --> NC
-  NC -- "HTTPS (read-only)" --> NA
+  NC -- "HTTPS (read-only by default)" --> NA
   AUTH -- "HTTPS (OAuth)" --> NA
 ```
 
@@ -87,6 +88,7 @@ src/
   netatmo/
     client.ts              # NetatmoClient (homesData, homeStatus, getRoomMeasure, getMeasure)
     endpoints.ts           # endpoint constants (read-only allow-list)
+    write-endpoints.ts     # opt-in write endpoints (ADR-0012), only via client.write()
     schemas.ts             # Zod response schemas (lenient: passthrough + optional)
     types.ts
     errors.ts              # NetatmoError hierarchy + classification
@@ -94,7 +96,9 @@ src/
     measures.ts            # optimize=true segment decoding
   domain/
     homes/ rooms/ devices/ # topology normalisation, name resolution
-    heating/               # current status
+    heating/               # current status; schedule.ts: schedule view, patching, validation
+    control-service.ts     # write mode: plans changes (limits, preview), applies them, audit
+    audit-log.ts           # changes.log (JSON lines)
     history/               # range resolution, chunking, dedup, downsampling
     analytics/             # orchestrates analytics/ over fetched series
   analytics/
@@ -103,6 +107,7 @@ src/
     server.ts              # createServer(services): McpServer
     tools/ resources/ prompts/
     errors.ts              # domain error → isError tool result
+    confirm.ts write-tools.ts  # write mode: confirmation (elicitation or token), write tools
   utils/
     dates.ts               # tz-aware ISO formatting with Intl, period presets
     logger.ts              # stderr-only logger with secret redaction
@@ -194,9 +199,12 @@ interface NetatmoClient {
 }
 ```
 
-- **Read-only by construction.** `endpoints.ts` contains only the four
-  read endpoints, and no code path can build another URL. A unit test
-  asserts this.
+- **Read-only by default.** `endpoints.ts` contains only the four read
+  endpoints used by `get`. Write endpoints live in `write-endpoints.ts`
+  and go through a separate `write()` method, which refuses every call
+  unless the client was created in write mode (`login --write` and
+  `NETATMO_MCP_WRITE` not `0`). Unit tests assert both, and that write
+  endpoint names appear only in the modules that implement write mode.
 - **Timeouts:** 15 s per request by default, merged with the caller's
   `AbortSignal`, which the MCP request signal is passed through to.
 - **Retries:** reads only. Up to 3 attempts with exponential backoff and
@@ -375,18 +383,18 @@ also states that the data contains no gas or energy consumption.
 
 ## 10. Security model
 
-| Threat / concern                | Mitigation                                                                                                                                                                                       |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Assistant changes heating       | No write endpoints in code; `write_thermostat` never requested; test asserts the endpoint allow-list                                                                                             |
-| Token leakage via logs          | Logger redacts `access_token`, `refresh_token`, `client_secret`, `Authorization`, `code`; tokens never in error messages, tool output or `doctor` output (only "present, expires in 2 h 14 min") |
-| Token leakage via filesystem    | Per-user config dir, file mode `0600` (POSIX), directory `0700`; Windows relies on the user-profile ACL (documented)                                                                             |
-| Token corruption                | Atomic write (temp + `rename`) and cross-process lock                                                                                                                                            |
-| OAuth CSRF / code injection     | 256-bit random `state`, constant-time compare, one-shot callback, 5-min timeout, server bound to `127.0.0.1` only                                                                                |
-| Network exposure                | stdio only; no listening socket except the short-lived loopback callback during `login`                                                                                                          |
-| PII exposure                    | `homesdata.user` (email) dropped; home coordinates/altitude not exposed; names (rooms, homes) are user data and are returned to the local assistant only                                         |
-| Supply chain                    | 2 runtime deps; lockfile; Dependabot; npm provenance via trusted publishing                                                                                                                      |
-| Telemetry                       | None. Only `api.netatmo.com` is contacted.                                                                                                                                                       |
-| Prompt injection via room names | Names are returned as data inside structured JSON; tools never execute anything based on returned content                                                                                        |
+| Threat / concern                | Mitigation                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Assistant changes heating       | Read-only by default: `write_thermostat` requested only by `login --write`, write tools registered only then, client refuses writes otherwise (tested). In write mode: every change previewed and confirmed by the user (elicitation or single-use token bound to the arguments), temperature and duration limits, no retries, local audit log (ADR-0012) |
+| Token leakage via logs          | Logger redacts `access_token`, `refresh_token`, `client_secret`, `Authorization`, `code`; tokens never in error messages, tool output or `doctor` output (only "present, expires in 2 h 14 min")                                                                                                                                                          |
+| Token leakage via filesystem    | Per-user config dir, file mode `0600` (POSIX), directory `0700`; Windows relies on the user-profile ACL (documented)                                                                                                                                                                                                                                      |
+| Token corruption                | Atomic write (temp + `rename`) and cross-process lock                                                                                                                                                                                                                                                                                                     |
+| OAuth CSRF / code injection     | 256-bit random `state`, constant-time compare, one-shot callback, 5-min timeout, server bound to `127.0.0.1` only                                                                                                                                                                                                                                         |
+| Network exposure                | stdio only; no listening socket except the short-lived loopback callback during `login`                                                                                                                                                                                                                                                                   |
+| PII exposure                    | `homesdata.user` (email) dropped; home coordinates/altitude not exposed; names (rooms, homes) are user data and are returned to the local assistant only                                                                                                                                                                                                  |
+| Supply chain                    | 2 runtime deps; lockfile; Dependabot; npm provenance via trusted publishing                                                                                                                                                                                                                                                                               |
+| Telemetry                       | None. Only `api.netatmo.com` is contacted.                                                                                                                                                                                                                                                                                                                |
+| Prompt injection via room names | Names are returned as data inside structured JSON; tools never execute anything based on returned content                                                                                                                                                                                                                                                 |
 
 Note that any data returned to the assistant is processed by whatever
 model the user's MCP client is configured with. The README states

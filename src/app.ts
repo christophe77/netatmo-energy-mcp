@@ -1,12 +1,16 @@
-import { CredentialStore } from './auth/credential-store.js';
+import path from 'node:path';
+import { CredentialStore, type StoredCredentials } from './auth/credential-store.js';
 import type { FetchFn } from './auth/oauth.js';
 import { TokenManager } from './auth/token-manager.js';
 import type { AppConfig } from './config/loader.js';
 import { AnalyticsService } from './domain/analytics-service.js';
+import { AuditLog } from './domain/audit-log.js';
+import { ControlService } from './domain/control-service.js';
 import { EnergyService } from './domain/energy-service.js';
 import { HistoryService } from './domain/history/history-service.js';
 import { NetatmoClient, type NetatmoClientOptions } from './netatmo/client.js';
 import { RateLimiter, type RateWindow } from './netatmo/rate-limiter.js';
+import { WRITE_SCOPE } from './netatmo/write-endpoints.js';
 import { systemClock, type Clock } from './utils/clock.js';
 import type { Logger } from './utils/logger.js';
 
@@ -17,6 +21,7 @@ export interface Runtime {
   history: HistoryService;
   service: EnergyService;
   analytics: AnalyticsService;
+  control: ControlService;
   clock: Clock;
 }
 
@@ -25,6 +30,19 @@ export interface RuntimeOverrides {
   clock?: Clock;
   rateWindows?: readonly RateWindow[];
   onExchange?: NetatmoClientOptions['onExchange'];
+  /** Allow write endpoints (opt-in write mode, ADR-0012). Default false. */
+  allowWrites?: boolean;
+}
+
+/**
+ * Write mode is on only when the stored token was granted `write_thermostat` (login --write)
+ * and it was not switched off with NETATMO_MCP_WRITE=0 (ADR-0012).
+ */
+export function isWriteModeEnabled(
+  config: AppConfig,
+  stored: StoredCredentials | undefined,
+): boolean {
+  return config.write !== 'off' && (stored?.tokens?.scope.includes(WRITE_SCOPE) ?? false);
 }
 
 /** Composition root: wires configuration, auth, the Netatmo client and domain services. */
@@ -46,6 +64,7 @@ export function createRuntime(
     tokens,
     logger,
     clock,
+    allowWrites: overrides.allowWrites === true,
     rateLimiter: new RateLimiter({
       clock,
       ...(overrides.rateWindows && { windows: overrides.rateWindows }),
@@ -56,5 +75,7 @@ export function createRuntime(
   const history = new HistoryService(client);
   const service = new EnergyService(client, history, clock);
   const analytics = new AnalyticsService(client, history, service, clock);
-  return { store, tokens, client, history, service, analytics, clock };
+  const audit = new AuditLog(path.join(config.paths.dir, 'changes.log'), logger);
+  const control = new ControlService(client, config.limits, audit, clock);
+  return { store, tokens, client, history, service, analytics, control, clock };
 }

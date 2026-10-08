@@ -8,17 +8,22 @@
 [![Licence : Apache-2.0](https://img.shields.io/badge/licence-Apache--2.0-blue.svg)](LICENSE)
 ![Node.js >= 22.19](https://img.shields.io/badge/node-%3E%3D22.19-339933)
 
-Un **serveur MCP Netatmo** en lecture seule pour les **thermostats
-intelligents et vannes thermostatiques Netatmo**. Il donne aux
-assistants IA un accès structuré à votre chauffage :
+Un **serveur MCP Netatmo** pour les **thermostats intelligents et vannes
+thermostatiques Netatmo**. Il donne aux assistants IA un accès structuré
+à votre chauffage :
 
 - températures et consignes des pièces
 - demande de chauffe et activité de la chaudière
 - historique des températures
 - analyses de chauffage déterministes
+- plannings hebdomadaires de chauffe
+- pilotage optionnel du chauffage : consignes des pièces, mode absent /
+  hors-gel et plannings, chaque modification étant confirmée par vous
 
-Il tourne sur votre machine, ne communique qu'avec l'**API Netatmo Energy**
-officielle et ne peut modifier aucun réglage de chauffage.
+Il tourne sur votre machine et ne communique qu'avec l'**API Netatmo
+Energy** officielle. Il est **en lecture seule par défaut** : il ne peut
+modifier votre chauffage que si vous activez le
+[mode écriture](#mode-écriture-pilotage-du-chauffage) à la connexion.
 
 Il fonctionne avec tout client [Model Context Protocol](https://modelcontextprotocol.io)
 capable de lancer des serveurs locaux, **quel que soit le modèle** :
@@ -34,7 +39,7 @@ Il fonctionne aussi dans Windsurf / Devin Desktop, Zed, Roo Code, Kilo
 Code, JetBrains AI Assistant, Kiro et Warp. Voir
 [tous les clients compatibles](#assistants-ia-et-clients-mcp-compatibles).
 
-> **État : première version (0.1.0).** L'intégration de l'API Netatmo a été
+> **État : première version (0.2.0).** L'intégration de l'API Netatmo a été
 > validée sur une installation réelle ; retours et rapports de compatibilité
 > bienvenus.
 
@@ -52,8 +57,9 @@ consulter, mais pas leur poser de questions.
 Ce projet est une petite passerelle entre l'API Netatmo Energy et
 n'importe quel assistant IA compatible MCP. Posez une question simple :
 « Quelle pièce était la plus froide cette nuit ? » L'assistant appelle un
-outil précis, en lecture seule, et répond à partir de vos données. Il ne
-devine pas.
+outil précis et répond à partir de vos données. Il ne devine pas. Avec
+le mode écriture, vous pouvez aussi dire « Mets la chambre à 19 °C
+jusqu'à 7 h », puis confirmer la modification.
 
 Les rares autres serveurs MCP Netatmo visent les **stations météo**.
 Celui-ci est conçu pour les **thermostats, vannes thermostatiques et
@@ -84,8 +90,19 @@ l'historique de chauffage**. Voir [docs/research.md](docs/research.md)
   - Classement des pièces.
   - Détection par règles des relevés inhabituels, chacun avec sévérité
     et niveau de confiance.
-- **14 outils MCP, 4 ressources et 4 prompts** (rapport quotidien, revue
-  des anomalies, comparaison des pièces, revue des habitudes de chauffage).
+- **Plannings hebdomadaires :** zones (Confort, Nuit, Éco…), consigne de
+  chaque pièce par zone et programme horaire, en jours et heures lisibles.
+- **Pilotage du chauffage (mode écriture, sur activation)**
+  - Consignes temporaires de pièce qui se terminent toujours (3 h par
+    défaut, 24 h au plus), ou retour au planning.
+  - Mode du logement : planning, absent ou hors-gel, éventuellement
+    jusqu'à une date.
+  - Changer de planning, en créer, les modifier et les renommer.
+  - Chaque modification est présentée et exige votre confirmation
+    explicite. Températures limitées à 7–28 °C par défaut.
+- **15 outils MCP en lecture seule, 6 outils de pilotage, 4 ressources et
+  4 prompts** (rapport quotidien, revue des anomalies, comparaison des
+  pièces, revue des habitudes de chauffage).
 - **Mise en place simple**
   - Connexion OAuth2 dans le navigateur avec une seule commande `login`.
   - Jetons stockés de façon sécurisée et renouvelés automatiquement.
@@ -112,7 +129,10 @@ npx -y netatmo-energy-mcp login
 
 `login` demande le client ID et le secret, puis ouvre votre navigateur :
 vous vous connectez sur netatmo.com et autorisez un accès **en lecture
-seule**. Vérifiez ensuite la configuration :
+seule**. Pour permettre à l'assistant de modifier votre chauffage,
+utilisez plutôt `login --write` (voir le
+[mode écriture](#mode-écriture-pilotage-du-chauffage)). Vérifiez ensuite
+la configuration :
 
 ```bash
 npx -y netatmo-energy-mcp doctor
@@ -187,6 +207,10 @@ chaque question.
 | « Mon chauffage a-t-il eu un comportement inhabituel cette nuit ? »                | `netatmo_detect_anomalies`                                    |
 | « Fais-moi le rapport de chauffage d'hier. »                                       | prompt `heating_daily_report` → `netatmo_get_heating_summary` |
 | « Des piles de vannes sont-elles faibles ? »                                       | `netatmo_get_device_status`                                   |
+| « À quoi ressemble mon planning de la semaine ? »                                  | `netatmo_get_schedules`                                       |
+| _Mode écriture :_ « Chauffe le bureau à 21 °C pendant 2 heures. »                  | `netatmo_set_room_setpoint`                                   |
+| _Mode écriture :_ « Je suis absent jusqu'à dimanche soir. »                        | `netatmo_set_home_mode`                                       |
+| _Mode écriture :_ « Baisse la zone Nuit à 17 °C dans toutes les chambres. »        | `netatmo_get_schedules` → `netatmo_update_schedule`           |
 
 Le « temps de fonctionnement » de la chaudière est le temps pendant
 lequel le thermostat **demandait de la chauffe**. Netatmo ne mesure pas
@@ -194,7 +218,7 @@ la consommation de gaz ou d'énergie : ce projet ne l'affiche donc jamais.
 
 ## Outils MCP disponibles
 
-Tous les outils sont en lecture seule et n'ont besoin que du droit OAuth
+Les outils en lecture seule n'ont besoin que du droit OAuth
 `read_thermostat`. La référence complète, avec arguments et résultats,
 est générée à partir du serveur lui-même : [docs/tools.md](docs/tools.md)
 (en anglais).
@@ -215,9 +239,57 @@ est générée à partir du serveur lui-même : [docs/tools.md](docs/tools.md)
 | `netatmo_get_heating_summary`     | Indicateurs de confort par pièce et temps chaudière sur une période       |
 | `netatmo_compare_rooms`           | Indicateurs et classements des pièces                                     |
 | `netatmo_detect_anomalies`        | Relevés inhabituels avec sévérité, confiance et éléments factuels         |
+| `netatmo_get_schedules`           | Plannings hebdomadaires : zones, consignes par pièce, programme horaire   |
+
+**Mode écriture uniquement.** Chaque modification exige votre confirmation.
+
+| Outil                       | Description                                                         |
+| --------------------------- | ------------------------------------------------------------------- |
+| `netatmo_set_room_setpoint` | Consigne temporaire ou boost d'une pièce, ou retour au planning     |
+| `netatmo_set_home_mode`     | Mode planning, absent ou hors-gel, éventuellement jusqu'à une date  |
+| `netatmo_switch_schedule`   | Activer un autre planning hebdomadaire                              |
+| `netatmo_create_schedule`   | Nouveau planning copié d'un planning existant, avec modifications   |
+| `netatmo_update_schedule`   | Consignes par zone, températures absent/hors-gel, programme horaire |
+| `netatmo_rename_schedule`   | Renommer un planning (expérimental : point d'accès non documenté)   |
 
 Ressources : `netatmo://homes` et `netatmo://homes/{homeId}/rooms`,
 `…/devices` et `…/status`.
+
+## Mode écriture (pilotage du chauffage)
+
+Le mode écriture est **désactivé par défaut**. Pour l'activer,
+reconnectez-vous avec :
+
+```bash
+npx -y netatmo-energy-mcp login --write
+```
+
+Le droit OAuth `write_thermostat` est alors demandé en plus. Les outils
+de pilotage apparaissent après le redémarrage de votre client MCP.
+
+Garde-fous :
+
+- **Vous confirmez chaque modification.** Les clients qui gèrent
+  l'élicitation MCP vous le demandent directement. Avec les autres, le
+  premier appel ne renvoie qu'un aperçu et un jeton à usage unique ;
+  l'assistant doit vous montrer l'aperçu et obtenir votre accord avant de
+  rappeler l'outil. Rien n'est envoyé à Netatmo avant.
+- **Limites.** Les températures doivent rester entre 7 et 28 °C. Les
+  consignes manuelles se terminent après 3 h par défaut, 24 h au plus.
+  Modifiables avec `NETATMO_MCP_MIN_TEMP`, `NETATMO_MCP_MAX_TEMP` et
+  `NETATMO_MCP_MAX_SETPOINT_HOURS`.
+- **Coupe-circuit.** `NETATMO_MCP_WRITE=0` force la lecture seule, même
+  avec une connexion autorisée en écriture.
+- **Journal.** Chaque modification appliquée ou en échec est ajoutée à
+  `changes.log` dans votre dossier de configuration.
+- **Pas de nouvel essai automatique.** Une écriture en échec n'est jamais
+  renvoyée à l'aveugle.
+
+Netatmo ne fournit aucune API pour supprimer un planning : ceux créés ici
+ne peuvent être supprimés que dans l'application Netatmo. Renommer un
+planning et choisir un planning avec le mode « planning » utilisent des
+paramètres Netatmo non documentés : ils sont marqués expérimentaux.
+Détails (en anglais) : [docs/configuration.md](docs/configuration.md#write-mode).
 
 ## Équipements compatibles
 
@@ -269,8 +341,9 @@ Ce projet utilise le flux OAuth2 « authorization code » de Netatmo. Vous
 vous connectez sur netatmo.com ; votre mot de passe Netatmo n'est jamais
 vu par cet outil.
 
-**Droit demandé.** Seul `read_thermostat` est demandé. Un jeton divulgué
-ne pourrait pas modifier votre chauffage.
+**Droit demandé.** Par défaut, seul `read_thermostat` est demandé : un
+jeton divulgué ne pourrait pas modifier votre chauffage. `login --write`
+demande aussi `write_thermostat`.
 
 **Votre propre application.** Chaque utilisateur crée une application
 développeur Netatmo gratuite. Le secret client ne peut pas être livré
@@ -285,9 +358,10 @@ Détails (en anglais) : [docs/authentication.md](docs/authentication.md).
 ## Confidentialité et sécurité
 
 **Ce qui quitte votre machine.** Uniquement des requêtes HTTPS vers
-`api.netatmo.com`, et seulement vers 4 points d'accès en lecture. Le code
-n'a aucun chemin vers les points d'accès d'écriture de Netatmo, et un
-test échoue si l'un d'eux est ajouté.
+`api.netatmo.com`. En lecture seule, seuls 4 points d'accès en lecture
+sont appelés : le client refuse toute écriture avant le moindre accès
+réseau, et des tests le vérifient. En mode écriture, une modification
+n'est envoyée qu'après votre confirmation.
 
 **Ce qui reste en local.**
 
@@ -313,7 +387,7 @@ En savoir plus (en anglais) :
 
 ## Architecture
 
-![Architecture : l'assistant IA dialogue par stdio avec le serveur local en lecture seule, qui interroge l'API Netatmo](docs/assets/architecture.svg)
+![Architecture : l'assistant IA dialogue par stdio avec le serveur local, qui interroge l'API Netatmo (en lecture seule par défaut)](docs/assets/architecture.svg)
 
 Le client Netatmo et les analyses sont indépendants de MCP. Les décisions
 de conception sont consignées dans des [ADR](docs/adr/README.md), et
@@ -331,7 +405,7 @@ Elles viennent de l'API Netatmo Energy ; détails dans
   disponible qu'en valeur instantanée. Un futur collecteur optionnel
   pourra l'enregistrer ([ADR-0011](docs/adr/0011-future-snapshot-collector.md)).
 - **Pas de température extérieure dans l'API Energy.** Le contexte météo
-  est prévu pour la v0.3.
+  est prévu pour la v0.4.
 - **L'historique va jusqu'à 30 minutes de résolution, pas plus fin.**
   Chaque requête renvoie au plus 1024 valeurs, donc les longues périodes
   utilisent des pas plus grossiers.
@@ -346,13 +420,14 @@ Elles viennent de l'API Netatmo Energy ; détails dans
 
 | Version   | Objectif                                             |
 | --------- | ---------------------------------------------------- |
-| v0.1      | Serveur MCP en lecture seule (cette version)         |
-| v0.2      | Diagnostics plus riches                              |
-| v0.3      | Contexte météo (Open-Meteo)                          |
-| v0.4–v0.6 | Modélisation thermique, prévisions, jumeau numérique |
+| v0.1      | Serveur MCP en lecture seule                         |
+| v0.2      | Plannings, pilotage optionnel (version actuelle)     |
+| v0.3      | Diagnostics plus riches                              |
+| v0.4      | Contexte météo (Open-Meteo)                          |
+| v0.5–v0.7 | Modélisation thermique, prévisions, jumeau numérique |
 | v1.0      | Une interface stable                                 |
 
-Les opérations d'écriture ne seront jamais activées par défaut.
+Le mode écriture ne sera jamais activé par défaut.
 Voir [docs/roadmap.md](docs/roadmap.md).
 
 ## Contribuer

@@ -6,13 +6,15 @@ welcome.
 
 ## Ground rules
 
-- **The read-only guarantee is a hard rule.**
-  - Do not add calls to Netatmo write endpoints.
-  - Do not request write scopes.
-  - Do not add any feature that changes heating settings.
+- **Read-only by default is a hard rule.**
+  - Read features must work with the `read_thermostat` scope alone.
+  - Anything that changes heating goes through the opt-in write mode
+    ([ADR-0012](docs/adr/0012-opt-in-write-mode.md)): `ControlService`,
+    the confirmation flow in `src/mcp/confirm.ts`, the configured limits
+    and the audit log. Never call `client.write()` from anywhere else.
+  - New write endpoints need an ADR update first. `setstate` stays out.
 
-  A test enforces this ([ADR-0002](docs/adr/0002-read-only-stdio-only.md)).
-  Any future write support needs a new ADR first.
+  Tests enforce the separation (`tests/unit/netatmo/read-only.test.ts`).
 
 - **Never commit real data.** That means home IDs, device MAC addresses,
   room names, addresses, coordinates, tokens or real heating histories.
@@ -62,14 +64,14 @@ npx @modelcontextprotocol/inspector --cli node dist/index.js --method tools/list
 
 ## Project layout
 
-| Path             | What lives there                                                              |
-| ---------------- | ----------------------------------------------------------------------------- |
-| `src/netatmo/`   | Read-only API client: endpoints allow-list, retries, rate limiter, schemas    |
-| `src/auth/`      | OAuth, credential store, cross-process lock, token refresh                    |
-| `src/domain/`    | Application services (EnergyService, AnalyticsService) and views; no MCP code |
-| `src/analytics/` | Pure analytics functions                                                      |
-| `src/mcp/`       | Tool, resource and prompt registration only                                   |
-| `src/cli/`       | CLI commands                                                                  |
+| Path             | What lives there                                                                              |
+| ---------------- | --------------------------------------------------------------------------------------------- |
+| `src/netatmo/`   | API client: read allow-list, guarded opt-in writes, retries, rate limiter, schemas            |
+| `src/auth/`      | OAuth, credential store, cross-process lock, token refresh                                    |
+| `src/domain/`    | Application services (EnergyService, AnalyticsService, ControlService) and views; no MCP code |
+| `src/analytics/` | Pure analytics functions                                                                      |
+| `src/mcp/`       | Tool, resource and prompt registration only                                                   |
+| `src/cli/`       | CLI commands                                                                                  |
 
 Architecture: [docs/architecture.md](docs/architecture.md). Design
 decisions: [docs/adr/](docs/adr/README.md).

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 400" width="980" height="400" role="img" aria-labelledby="title desc" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
   <title id="title">netatmo-energy-mcp architecture</title>
-  <desc id="desc">An AI assistant talks to the local netatmo-energy-mcp process over stdio. Inside, MCP tools call application services, which use a read-only Netatmo client; the client gets tokens from the auth module, which stores credentials in an owner-only file. Only read-only HTTPS requests leave the machine, to api.netatmo.com.</desc>
+  <desc id="desc">An AI assistant talks to the local netatmo-energy-mcp process over stdio. Inside, MCP tools call application services, which use the Netatmo client (read-only unless write mode is enabled and each change is confirmed); the client gets tokens from the auth module, which stores credentials in an owner-only file. Only HTTPS requests to api.netatmo.com leave the machine.</desc>
   <style>
     .bg { fill: #ffffff; }
     .box { fill: #F3F7F7; stroke: #9FB8B8; stroke-width: 1.5; }
@@ -45,7 +45,7 @@
 
   <!-- Local process -->
   <rect class="proc" x="262" y="20" width="470" height="360" rx="16"/>
-  <text class="h" x="282" y="46">netatmo-energy-mcp (local process, read-only)</text>
+  <text class="h" x="282" y="46">netatmo-energy-mcp (local process)</text>
 
   <rect class="box" x="282" y="62" width="430" height="64" rx="10"/>
   <text class="h" x="302" y="88">MCP layer</text>
@@ -79,8 +79,9 @@
 
   <!-- Netatmo -->
   <path class="line" d="M712,268 L802,268"/>
-  <text class="lbl" x="740" y="258">HTTPS GET</text>
+  <text class="lbl" x="740" y="258">HTTPS</text>
   <text class="lbl" x="740" y="288">read-only</text>
+  <text class="lbl" x="740" y="303">by default</text>
 
   <rect class="ext" x="806" y="200" width="158" height="136" rx="12"/>
   <text class="h" x="885" y="234" text-anchor="middle">Netatmo API</text>

@@ -52,7 +52,7 @@ We will use `GET` (documented) for all read endpoints.
 | Legacy `expire_in` key                          | Also present in responses, read by lnetatmo                                                                                                                  | CORROBORATED                                         |
 | Refresh token rotation                          | Documented: new refresh token on every refresh, previous one invalidated immediately. **Observed: same refresh token returned, previous one still accepted** | VERIFIED (doc) / OBSERVED (contradicts)              |
 | Scope for Energy read                           | `read_thermostat`                                                                                                                                            | VERIFIED                                             |
-| Scope for Energy write                          | `write_thermostat` (never requested in v0.1)                                                                                                                 | VERIFIED                                             |
+| Scope for Energy write                          | `write_thermostat` (requested only by `login --write`)                                                                                                       | VERIFIED                                             |
 | Scope for BTicino Smarther (BNS)                | `read_smarther`                                                                                                                                              | VERIFIED (scope table); need for BNS homes UNCERTAIN |
 | Default scope if none requested                 | `read_station` (Weather)                                                                                                                                     | VERIFIED                                             |
 
@@ -71,11 +71,34 @@ one of them out. See [ADR-0005](adr/0005-token-storage-and-refresh.md).
 | `GET /getroommeasure` | `home_id`_, `room_id`_, `scale`_, `type`_, `date_begin`, `date_end`, `limit`, `optimize`, `real_time`                                    | Room temperature / setpoint history        | VERIFIED |
 | `GET /getmeasure`     | `device_id`* (gateway MAC), `module_id`* (thermostat MAC), `scale`_, `type`_, `date_begin`, `date_end`, `limit`, `optimize`, `real_time` | Boiler activity history                    | VERIFIED |
 
-### Write endpoints (documented, **never called** by this project)
+### Write endpoints (opt-in write mode, since v0.2)
 
-`POST /setroomthermpoint`, `POST /setthermmode`, `POST /createnewhomeschedule`,
-`POST /synchomeschedule`, `POST /switchhomeschedule` — all require
-`write_thermostat`, which v0.1 never requests. VERIFIED.
+All require `write_thermostat`, which is requested only by `login --write`
+([ADR-0012](adr/0012-opt-in-write-mode.md)). They are called only after the
+user confirms a change.
+
+| Endpoint                      | Parameters used                                                                                                                                                | Purpose                                      | Status                                            |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------- |
+| `POST /setroomthermpoint`     | `home_id`, `room_id`, `mode` (`manual` / `max` / `home`), `temp` (manual), `endtime` (manual / max)                                                            | Temporary room setpoint, or back to schedule | VERIFIED (doc)                                    |
+| `POST /setthermmode`          | `home_id`, `mode` (`schedule` / `away` / `hg`), `endtime`? (away / hg)                                                                                         | Home heating mode                            | VERIFIED (doc)                                    |
+| `POST /setthermmode`          | `schedule_id` with `mode=schedule`                                                                                                                             | Leave away / hg mode onto a given schedule   | **UNDOCUMENTED**, used by pyatmo — experimental   |
+| `POST /switchhomeschedule`    | `home_id`, `schedule_id`                                                                                                                                       | Activate another weekly schedule             | VERIFIED (doc)                                    |
+| `POST /createnewhomeschedule` | `home_id`, `name` (query) + JSON body `{away_temp, hg_temp, timetable[{zone_id, m_offset}], zones[{id, name, type, rooms[{id, therm_setpoint_temperature}]}]}` | Create a schedule (not activated)            | VERIFIED (doc); body format CORROBORATED (pyatmo) |
+| `POST /synchomeschedule`      | `home_id`, `schedule_id`, `name` (query) + the same JSON body                                                                                                  | Replace a schedule's zones and timetable     | VERIFIED (doc); body format CORROBORATED (pyatmo) |
+| `POST /renamehomeschedule`    | `home_id`, `schedule_id`, `name`                                                                                                                               | Rename a schedule                            | **UNDOCUMENTED** — experimental                   |
+
+Not available or not used:
+
+- **No delete endpoint** for schedules: they can only be deleted in the
+  Netatmo app. VERIFIED absent from the documentation.
+- `POST /setstate` (generic per-module state) is deliberately not exposed:
+  it overlaps the endpoints above and has a much larger blast radius.
+- Write calls are **not retried** on network or 5xx errors, since Netatmo
+  may already have applied them. The tool says the change may or may not
+  have been applied.
+
+Live behaviour of the write endpoints has not yet been validated on a real
+installation; see [live-validation.md](live-validation.md#8-write-mode).
 
 ### Legacy endpoints (not used)
 
@@ -207,7 +230,7 @@ Points per request at max `limit` = 1024:
 | Valve opening position                                   | **UNSUPPORTED**                                                  |
 | Gas / energy consumption for boilers                     | **UNSUPPORTED**                                                  |
 | Burner modulation level (OpenTherm)                      | **UNSUPPORTED**                                                  |
-| Outdoor temperature                                      | **UNSUPPORTED** in Energy API (Weather API / Open-Meteo in v0.3) |
+| Outdoor temperature                                      | **UNSUPPORTED** in Energy API (Weather API / Open-Meteo in v0.4) |
 | Window-open events history                               | **UNSUPPORTED**                                                  |
 | Setpoint change log / who changed it                     | **UNSUPPORTED** (only `sp_temperature` series)                   |
 

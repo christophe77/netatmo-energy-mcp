@@ -7,6 +7,7 @@ import {
   exchangeAuthorizationCode,
   parseRedirectUrl,
   READ_ONLY_SCOPES,
+  READ_WRITE_SCOPES,
 } from '../../auth/oauth.js';
 import { ensureSecureDir } from '../../auth/secure-fs.js';
 import { AppError } from '../../errors.js';
@@ -15,7 +16,10 @@ import { parseCommandArgs, type Command, type CommandContext } from '../index.js
 import { isInteractive, prompt, promptHidden } from '../prompt.js';
 import { verifyAccount } from './verify.js';
 
-const USAGE = `netatmo-energy-mcp login [--manual] [--no-browser] [--client-id <id>] [--timeout <seconds>]
+const USAGE = `netatmo-energy-mcp login [--write] [--manual] [--no-browser] [--client-id <id>] [--timeout <seconds>]
+
+  --write              Also grant write access (write_thermostat): lets the assistant change setpoints,
+                       modes and schedules, always after your confirmation. Without it, read-only.
 
   --manual             Do not start a local callback server. Paste the redirected URL instead.
   --no-browser         Print the authorization URL without opening a browser.
@@ -40,6 +44,7 @@ async function runLogin({ config, out, logger, argv }: CommandContext): Promise<
     'client-id': { type: 'string' },
     timeout: { type: 'string', default: '300' },
     'experimental-pkce': { type: 'boolean', default: false },
+    write: { type: 'boolean', default: false },
   });
   const timeoutS = Number(values.timeout);
   if (!Number.isFinite(timeoutS) || timeoutS < 10) {
@@ -69,18 +74,23 @@ async function runLogin({ config, out, logger, argv }: CommandContext): Promise<
     return 2;
   }
 
-  // 2. Authorization request.
+  // 2. Authorization request. Write access is opt-in (ADR-0012).
+  const scopes: readonly string[] = values.write ? READ_WRITE_SCOPES : READ_ONLY_SCOPES;
   const state = createState();
   const pkce = values['experimental-pkce'] ? createPkcePair() : undefined;
   const authorizeUrl = buildAuthorizeUrl({
     clientId,
     redirectUri: config.redirectUri,
     state,
-    scopes: READ_ONLY_SCOPES,
+    scopes,
     ...(pkce && { codeChallenge: pkce.challenge }),
   });
 
-  out.line(`Requesting read-only access (scope: ${READ_ONLY_SCOPES.join(' ')}).`);
+  out.line(
+    values.write
+      ? `Requesting read AND write access (scope: ${scopes.join(' ')}). The assistant will be able to change the heating, always after your confirmation.`
+      : `Requesting read-only access (scope: ${scopes.join(' ')}).`,
+  );
   out.line(`Redirect URI (must be registered in your Netatmo app): ${config.redirectUri}`);
   out.line();
 
@@ -125,6 +135,7 @@ async function runLogin({ config, out, logger, argv }: CommandContext): Promise<
       clientSecret,
       code,
       redirectUri: config.redirectUri,
+      scopes,
       now: Date.now(),
       ...(pkce && { codeVerifier: pkce.verifier }),
     });
@@ -151,7 +162,7 @@ async function runLogin({ config, out, logger, argv }: CommandContext): Promise<
         'The secret from NETATMO_CLIENT_SECRET was stored too, so MCP client configurations need no secrets. Run "logout" to delete the file.',
       );
     }
-    const missing = READ_ONLY_SCOPES.filter((s) => !tokens.scope.includes(s));
+    const missing = scopes.filter((s) => !tokens.scope.includes(s));
     if (tokens.scope.length > 0 && missing.length > 0) {
       out.line(`Warning: the granted scope is missing ${missing.join(', ')}.`);
     }

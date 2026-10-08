@@ -1,7 +1,7 @@
 {
   "name": "netatmo-energy-mcp",
-  "version": "0.1.0",
-  "description": "Read-only MCP server for Netatmo smart thermostats and radiator valves. Works with any MCP client and LLM (Claude, GPT, Gemini, local models): heating status, history and analytics.",
+  "version": "0.2.0",
+  "description": "MCP server for Netatmo smart thermostats and radiator valves. Works with any MCP client and LLM (Claude, GPT, Gemini, local models): heating status, history, analytics, schedules and opt-in heating control.",
   "keywords": [
     "netatmo",
     "netatmo-energy",
@@ -28,7 +28,9 @@
     "windsurf",
     "lm-studio",
     "ollama",
-    "local-llm"
+    "local-llm",
+    "heating-control",
+    "heating-schedule"
   ],
   "homepage": "https://github.com/christophe77/netatmo-energy-mcp#readme",
   "bugs": {
