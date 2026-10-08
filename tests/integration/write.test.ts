@@ -62,7 +62,8 @@ function recordingFetch(handler: ReturnType<typeof netatmo>): typeof fetch {
 async function setup(
   opts: {
     scope?: string[];
-    elicitation?: 'accept' | 'decline';
+    /** How the fake client answers the confirmation dialog. */
+    elicitation?: 'accept' | 'accept-empty' | 'accept-unchecked' | 'decline';
     /** Protocol generation spoken by the client (default: the SDK client's default, 2025 era). */
     era?: 'legacy' | 'modern';
     env?: Record<string, string>;
@@ -107,11 +108,14 @@ async function setup(
     },
   );
   if (opts.elicitation) {
-    client.setRequestHandler('elicitation/create', () =>
-      opts.elicitation === 'accept'
-        ? { action: 'accept', content: { confirm: true } }
-        : { action: 'decline' },
-    );
+    const answers = {
+      accept: { action: 'accept', content: { confirm: true } },
+      'accept-empty': { action: 'accept', content: {} },
+      'accept-unchecked': { action: 'accept', content: { confirm: false } },
+      decline: { action: 'decline' },
+    } as const;
+    const answer = answers[opts.elicitation];
+    client.setRequestHandler('elicitation/create', () => answer);
   }
   await client.connect(ct);
   return { client, writes, config };
@@ -236,10 +240,23 @@ describe.each(['legacy', 'modern'] as const)('elicitation confirmation (%s proto
     });
   });
 
-  it('changes nothing when the user declines', async () => {
-    const { client, writes } = await setup({ elicitation: 'decline', era });
+  it('treats "Accept" without form content as a confirmation', async () => {
+    const { client, writes } = await setup({ elicitation: 'accept-empty', era });
     const res = await call(client, 'netatmo_set_home_mode', { mode: 'frost_guard' });
-    expect(res.structuredContent).toMatchObject({ status: 'cancelled' });
+    expect(res.structuredContent).toMatchObject({ status: 'applied' });
+    expect(writes).toHaveLength(1);
+  });
+
+  it.each([
+    ['decline', 'declined'],
+    ['accept-unchecked', 'unchecked'],
+  ] as const)('changes nothing when the client answers %s', async (elicitation, clientAnswer) => {
+    const { client, writes } = await setup({ elicitation, era });
+    const res = await call(client, 'netatmo_set_home_mode', { mode: 'frost_guard' });
+    expect(res.structuredContent).toMatchObject({
+      status: 'cancelled',
+      client_answer: clientAnswer,
+    });
     expect(writes).toHaveLength(0);
   });
 });

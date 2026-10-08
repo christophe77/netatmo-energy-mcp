@@ -11,7 +11,6 @@
  */
 import { createHash, randomBytes } from 'node:crypto';
 import {
-  acceptedContent,
   CLIENT_CAPABILITIES_META_KEY,
   inputRequired,
   PROTOCOL_VERSION_META_KEY,
@@ -28,9 +27,28 @@ import { ok, toolError } from './results.js';
 
 export const CONFIRMATION_TTL_MS = 5 * 60_000;
 
+const CONFIRM_TITLE = 'Apply this change to the heating?';
 const confirmationSchema = z.object({
-  confirm: z.boolean().describe('Apply this change to the heating?'),
+  confirm: z.boolean().default(true).describe(CONFIRM_TITLE),
 });
+
+type ClientAnswer = 'accepted' | 'declined' | 'cancelled' | 'unchecked';
+
+/**
+ * "Accept" in the client's confirmation dialog means yes. The checkbox is pre-checked; only an
+ * explicit uncheck (confirm: false) turns an acceptance into a refusal.
+ */
+function readAnswer(response: unknown): ClientAnswer {
+  const r = response as { action?: unknown; content?: { confirm?: unknown } } | undefined;
+  if (r?.action === 'accept') return r.content?.confirm === false ? 'unchecked' : 'accepted';
+  return r?.action === 'decline' ? 'declined' : 'cancelled';
+}
+
+const ANSWER_TEXT: Record<Exclude<ClientAnswer, 'accepted'>, string> = {
+  declined: 'The user declined the change in the confirmation dialog.',
+  cancelled: 'The confirmation dialog was dismissed or closed without an answer.',
+  unchecked: 'The user accepted the dialog but unchecked the confirmation box.',
+};
 
 /** In-memory, single-use tokens bound to (tool, arguments). */
 export class ConfirmationTokens {
@@ -101,11 +119,12 @@ function planKey(tool: string, args: Record<string, unknown>, plan: ChangePlan):
   return `${confirmationKey(tool, args)}#${digest}`;
 }
 
-function cancelled(plan: ChangePlan): CallToolResult {
+function cancelled(plan: ChangePlan, answer: Exclude<ClientAnswer, 'accepted'>): CallToolResult {
   return ok({
     status: 'cancelled',
     action: plan.action,
-    message: 'The user did not confirm the change. Nothing was modified.',
+    client_answer: answer,
+    message: `${ANSWER_TEXT[answer]} Nothing was modified.`,
   });
 }
 
@@ -156,8 +175,8 @@ export async function confirmAndApply(
               { hint: 'Call the tool again to get a fresh confirmation request.' },
             );
           }
-          const answer = acceptedContent(responses, 'confirm', confirmationSchema);
-          return answer?.confirm === true ? await applyPlan() : cancelled(plan);
+          const answer = readAnswer(responses.confirm);
+          return answer === 'accepted' ? await applyPlan() : cancelled(plan, answer);
         }
         return inputRequired({
           inputRequests: {
@@ -175,14 +194,11 @@ export async function confirmAndApply(
         message: question(plan),
         requestedSchema: {
           type: 'object',
-          properties: { confirm: { type: 'boolean', title: 'Apply this change to the heating?' } },
-          required: ['confirm'],
+          properties: { confirm: { type: 'boolean', title: CONFIRM_TITLE, default: true } },
         },
       });
-      const content = result.content as { confirm?: unknown } | undefined;
-      return result.action === 'accept' && content?.confirm === true
-        ? await applyPlan()
-        : cancelled(plan);
+      const answer = readAnswer(result);
+      return answer === 'accepted' ? await applyPlan() : cancelled(plan, answer);
     }
 
     if (c.requireElicitation) {
