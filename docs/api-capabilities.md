@@ -77,15 +77,15 @@ All require `write_thermostat`, which is requested only by `login --write`
 ([ADR-0012](adr/0012-opt-in-write-mode.md)). They are called only after the
 user confirms a change.
 
-| Endpoint                      | Parameters used                                                                                                                                                | Purpose                                      | Status                                            |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------- |
-| `POST /setroomthermpoint`     | `home_id`, `room_id`, `mode` (`manual` / `max` / `home`), `temp` (manual), `endtime` (manual / max)                                                            | Temporary room setpoint, or back to schedule | VERIFIED (doc)                                    |
-| `POST /setthermmode`          | `home_id`, `mode` (`schedule` / `away` / `hg`), `endtime`? (away / hg)                                                                                         | Home heating mode                            | VERIFIED (doc)                                    |
-| `POST /setthermmode`          | `schedule_id` with `mode=schedule`                                                                                                                             | Leave away / hg mode onto a given schedule   | **UNDOCUMENTED**, used by pyatmo — experimental   |
-| `POST /switchhomeschedule`    | `home_id`, `schedule_id`                                                                                                                                       | Activate another weekly schedule             | VERIFIED (doc)                                    |
-| `POST /createnewhomeschedule` | `home_id`, `name` (query) + JSON body `{away_temp, hg_temp, timetable[{zone_id, m_offset}], zones[{id, name, type, rooms[{id, therm_setpoint_temperature}]}]}` | Create a schedule (not activated)            | VERIFIED (doc); body format CORROBORATED (pyatmo) |
-| `POST /synchomeschedule`      | `home_id`, `schedule_id`, `name` (query) + the same JSON body                                                                                                  | Replace a schedule's zones and timetable     | VERIFIED (doc); body format CORROBORATED (pyatmo) |
-| `POST /renamehomeschedule`    | `home_id`, `schedule_id`, `name`                                                                                                                               | Rename a schedule                            | **UNDOCUMENTED** — experimental                   |
+| Endpoint                      | Parameters used                                                                                                                                                | Purpose                                      | Status                                                                                   |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `POST /setroomthermpoint`     | `home_id`, `room_id`, `mode` (`manual` / `max` / `home`), `temp` (manual), `endtime` (manual / max)                                                            | Temporary room setpoint, or back to schedule | VERIFIED (doc) + OBSERVED 2026-10-08 (manual, home)                                      |
+| `POST /setthermmode`          | `home_id`, `mode` (`schedule` / `away` / `hg`), `endtime`? (away / hg)                                                                                         | Home heating mode                            | VERIFIED (doc) + OBSERVED 2026-10-08 (hg with endtime, schedule)                         |
+| `POST /setthermmode`          | `schedule_id` with `mode=schedule`                                                                                                                             | Leave away / hg mode onto a given schedule   | **UNDOCUMENTED**, used by pyatmo — experimental                                          |
+| `POST /switchhomeschedule`    | `home_id`, `schedule_id`                                                                                                                                       | Activate another weekly schedule             | VERIFIED (doc)                                                                           |
+| `POST /createnewhomeschedule` | `home_id`, `name` (query) + JSON body `{away_temp, hg_temp, timetable[{zone_id, m_offset}], zones[{id, name, type, rooms[{id, therm_setpoint_temperature}]}]}` | Create a schedule (not activated)            | VERIFIED (doc); body format OBSERVED 2026-10-08                                          |
+| `POST /synchomeschedule`      | `home_id`, `schedule_id`, `name` (query) + the same JSON body                                                                                                  | Replace a schedule's zones and timetable     | VERIFIED (doc); body format OBSERVED 2026-10-08 (one zone setpoint changed, rest intact) |
+| `POST /renamehomeschedule`    | `home_id`, `schedule_id`, `name`                                                                                                                               | Rename a schedule                            | **UNDOCUMENTED**, OBSERVED working 2026-10-08 — still experimental                       |
 
 Not available or not used:
 
@@ -97,8 +97,17 @@ Not available or not used:
   may already have applied them. The tool says the change may or may not
   have been applied.
 
-Live behaviour of the write endpoints has not yet been validated on a real
-installation; see [live-validation.md](live-validation.md#8-write-mode).
+**Live validation (2026-10-08, NATherm1 + NRV installation,
+[live-validation.md](live-validation.md#8-write-mode)).** Manual room
+setpoint with end time, return to schedule, frost guard with end time,
+back to schedule mode, schedule creation, editing one zone setpoint (the
+rest of the schedule and the timetable unchanged) and renaming all
+worked as expected. Not yet observed live: `switchhomeschedule`, the
+`schedule_id` option of `setthermmode`, and `max` mode.
+
+One client advertised elicitation but answered every confirmation request
+with `decline` without showing a dialog; `NETATMO_MCP_CONFIRM=token`
+worked around it.
 
 ### Legacy endpoints (not used)
 

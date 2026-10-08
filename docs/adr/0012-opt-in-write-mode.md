@@ -97,6 +97,7 @@ Writing to a physical heating system raises the stakes:
 - `docs/api-capabilities.md` lists the write endpoints. Live validation
   of the write paths, especially the schedule JSON format and the
   experimental endpoints, is required before the release that ships
-  them.
+  them. Done on 2026-10-08 (see api-capabilities §3); `switchhomeschedule`,
+  `setthermmode` with `schedule_id` and `max` mode remain unobserved.
 - Schedules created through the API can only be deleted in the Netatmo
   app. Tool descriptions say so.
