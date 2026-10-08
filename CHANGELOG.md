@@ -7,6 +7,64 @@ minor versions may contain breaking changes; they are always listed.
 
 ## [Unreleased]
 
+### Fixed
+
+- `netatmo_set_room_setpoint` with `duration_minutes` could never be
+  confirmed through the preview + token flow: the end time was recomputed
+  from the confirmation time, so it never matched the preview. A duration
+  now counts from the preview, and the confirmed change is the one that was
+  shown. A setpoint whose confirmed end time has already passed is refused.
+
+## [0.2.0] - 2026-10-08
+
+Schedules and opt-in heating control. Read-only remains the default:
+nothing changes for existing users unless they run `login --write`.
+
+### Added
+
+- **Weekly schedules:** `netatmo_get_schedules` shows each schedule's
+  zones, the setpoint of every room per zone, away and frost-guard
+  temperatures, and the timetable as day + time + zone.
+- **Opt-in write mode** ([ADR-0012](docs/adr/0012-opt-in-write-mode.md)),
+  off by default. `login --write` also requests the `write_thermostat`
+  scope; the heating-control tools are registered only then:
+  - `netatmo_set_room_setpoint`: temporary manual setpoint or boost (always
+    with an end time), or back to the schedule.
+  - `netatmo_set_home_mode`: schedule, away or frost guard, optionally
+    until a date.
+  - `netatmo_switch_schedule`, `netatmo_create_schedule`,
+    `netatmo_update_schedule`.
+  - `netatmo_rename_schedule` and choosing a schedule in
+    `netatmo_set_home_mode` (experimental: undocumented Netatmo
+    parameters).
+- Every change is previewed and needs the user's confirmation: MCP
+  elicitation when the client supports it (2025 and 2026-07-28 protocol
+  versions), otherwise a single-use confirmation token bound to the exact
+  arguments and to the exact request to send. `NETATMO_MCP_CONFIRM=elicitation`
+  accepts only confirmations shown by the client; `token` skips the client
+  dialog for clients that advertise it without showing it. Cancellations
+  report what the client answered (`client_answer`).
+- Limits: `NETATMO_MCP_MIN_TEMP` / `NETATMO_MCP_MAX_TEMP` (7–28 °C by
+  default), `NETATMO_MCP_MAX_SETPOINT_HOURS` (24 h by default; manual
+  setpoints last 3 h unless told otherwise). `NETATMO_MCP_WRITE=0` forces
+  read-only mode.
+- Local audit log of applied and failed changes: `changes.log` in the
+  configuration folder.
+- `status` and `doctor` report whether write mode is active.
+- Changes are always planned from fresh Netatmo data, and schedules that
+  Netatmo reports incompletely are refused rather than sent back partially.
+
+### Changed
+
+- The server is served with the SDK's `serveStdio`, which negotiates both
+  the 2025 `initialize` handshake and the 2026-07-28 protocol version.
+- Write requests are never retried automatically. After a network error
+  or a 5xx response, the result says the change may or may not have been
+  applied, and `changes.log` records the outcome as `unknown`.
+- A token refresh without a `scope` field keeps the scope granted at
+  login.
+- `docs/tools.md` now documents the write-mode tools.
+
 ### Documentation
 
 - Compatibility with any local (stdio) MCP client and model, not just
@@ -73,5 +131,6 @@ First public version: a read-only MCP server for Netatmo Energy.
 - Tested on Netatmo Smart Thermostat (`NATherm1`), Smart Radiator Valves
   (`NRV`) and Relay (`NAPlug`). OpenTherm devices are untested.
 
-[Unreleased]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/christophe77/netatmo-energy-mcp/releases/tag/v0.1.0

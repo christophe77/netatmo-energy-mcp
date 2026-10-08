@@ -23,6 +23,27 @@ export interface Module {
   setupDate: number | null;
 }
 
+export interface ScheduleZone {
+  id: number;
+  name: string | null;
+  /** Netatmo zone type (0 comfort/day, 1 night, 5 eco, …; see docs/api-capabilities.md). */
+  type: number | null;
+  rooms: { roomId: string; setpointC: number | null }[];
+}
+
+export interface Schedule {
+  id: string;
+  name: string | null;
+  /** `therm` for heating schedules; other types (cooling, event…) are not editable here. */
+  type: string | null;
+  selected: boolean;
+  isDefault: boolean;
+  awayTempC: number | null;
+  frostGuardTempC: number | null;
+  timetable: { zoneId: number; mOffset: number }[];
+  zones: ScheduleZone[];
+}
+
 export interface Home {
   id: string;
   name: string;
@@ -33,7 +54,7 @@ export interface Home {
   defaultManualDurationMin: number | null;
   rooms: Room[];
   modules: Module[];
-  schedules: { id: string; name: string | null; selected: boolean }[];
+  schedules: Schedule[];
 }
 
 /**
@@ -77,7 +98,21 @@ function toHome(h: RawHome): Home {
     schedules: (h.schedules ?? []).map((s) => ({
       id: s.id,
       name: s.name ?? null,
+      type: s.type ?? null,
       selected: s.selected ?? false,
+      isDefault: s.default ?? false,
+      awayTempC: s.away_temp ?? null,
+      frostGuardTempC: s.hg_temp ?? null,
+      timetable: (s.timetable ?? []).map((t) => ({ zoneId: t.zone_id, mOffset: t.m_offset })),
+      zones: (s.zones ?? []).map((z) => ({
+        id: z.id,
+        name: z.name ?? null,
+        type: z.type ?? null,
+        rooms: (z.rooms ?? []).map((r) => ({
+          roomId: r.id,
+          setpointC: r.therm_setpoint_temperature ?? null,
+        })),
+      })),
     })),
   };
 }

@@ -2,18 +2,18 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.christophe77/netatmo-energy-mcp",
   "title": "Netatmo Energy",
-  "description": "Read-only MCP server for Netatmo thermostats and radiator valves: status, history, analytics.",
+  "description": "MCP server for Netatmo thermostats and radiator valves: status, history, analytics, opt-in control.",
   "repository": {
     "url": "https://github.com/christophe77/netatmo-energy-mcp",
     "source": "github"
   },
   "websiteUrl": "https://github.com/christophe77/netatmo-energy-mcp#readme",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "netatmo-energy-mcp",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "transport": { "type": "stdio" },
       "environmentVariables": [
         {
@@ -31,6 +31,36 @@
         {
           "name": "NETATMO_MCP_LOG_LEVEL",
           "description": "Log level written to stderr: debug, info, warn, error or silent.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "NETATMO_MCP_WRITE",
+          "description": "Set to 0 to force read-only mode. Write mode is only possible after `login --write`.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "NETATMO_MCP_CONFIRM",
+          "description": "Write mode confirmation: auto (default), elicitation (client dialog only) or token (preview + token only).",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "NETATMO_MCP_MIN_TEMP",
+          "description": "Write mode: lowest temperature a change may set, in °C (default 7).",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "NETATMO_MCP_MAX_TEMP",
+          "description": "Write mode: highest temperature a change may set, in °C (default 28).",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "NETATMO_MCP_MAX_SETPOINT_HOURS",
+          "description": "Write mode: longest manual room setpoint, in hours (default 24).",
           "isRequired": false,
           "isSecret": false
         }

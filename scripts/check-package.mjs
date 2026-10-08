@@ -12,7 +12,7 @@ import path from 'node:path';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 
-const EXPECTED_TOOLS = 14;
+const EXPECTED_TOOLS = 15; // read-only mode (no write scope)
 const root = path.resolve(import.meta.dirname, '..');
 const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
 // On Windows npm is a .cmd shim, which Node only runs through a shell. All arguments here are

@@ -18,32 +18,42 @@ Focus: reliable data access.
 - MCP resources and prompts
 - Documentation in English and French; config examples for Claude Desktop, Claude Code and Cursor
 
-## v0.2: Historical analytics and richer diagnostics
+## v0.2: Schedules and opt-in heating control
+
+Released. See [ADR-0012](adr/0012-opt-in-write-mode.md).
+
+- Weekly schedules readable as zones, room setpoints and a day/time timetable
+- Opt-in write mode (`login --write`, `write_thermostat` scope), off by default
+- Temporary room setpoints, home mode (schedule, away, frost guard), schedule switch, create, edit and rename
+- Every change previewed and confirmed by the user (MCP elicitation, or a single-use confirmation token)
+- Configurable temperature and duration limits, a local audit log, no automatic retries of writes
+
+## v0.3: Historical analytics and richer diagnostics
 
 - Heating cycle detection from boiler activity (cycle count, average length)
 - Warm-up and cool-down rates per room (°C/h), with the uncertainty stated
-- Schedule awareness: compare actual temperatures with the scheduled zones from `homesdata`
+- Schedule awareness: compare actual temperatures with the scheduled zones (schedules are readable since v0.2)
 - Device health report: battery trends, unreachable modules, RF signal
 - Optional CSV/JSON export of history to a local file
 - Live-API findings folded back into [api-capabilities.md](api-capabilities.md)
 
-## v0.3: Weather integration (Open-Meteo)
+## v0.4: Weather integration (Open-Meteo)
 
 - Outdoor temperature from Open-Meteo for the home's location. This is opt-in, because it sends approximate coordinates to a third party.
 - Degree-day normalisation of boiler activity
 - "Was it colder outside?" context in reports
 
-## v0.4: Thermal behaviour modelling
+## v0.5: Thermal behaviour modelling
 
 - Per-room heat-loss coefficient estimates from cool-down curves and outdoor temperature
 - Insulation comparisons between rooms, reported with confidence intervals
 
-## v0.5: Heating predictions
+## v0.6: Heating predictions
 
 - Time-to-target estimates per room
 - Next-day boiler activity estimates from weather forecasts
 
-## v0.6: Thermal digital twin integration
+## v0.7: Thermal digital twin integration
 
 - Export a room/thermal model that external digital-twin tools can consume
 - Integration points with the sibling _Thermal Twin_ project
@@ -52,7 +62,6 @@ Focus: reliable data access.
 
 - Stable tool names, input/output schemas and resource URIs
 - Documented deprecation policy
-- Optional, explicitly opted-in write operations (setpoints/modes), behind a separate scope, a configuration flag and per-call confirmation. These are **not** planned before the read-only surface is stable.
 
 ## Considered, not planned
 

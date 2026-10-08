@@ -42,8 +42,9 @@ Informational items also addressed:
 
 - **Room and home names are returned verbatim.** They are user data
   that the account owner controls. Like any MCP output, they could carry
-  prompt-injection text into the assistant. The server has no write
-  operations that injected text could trigger.
+  prompt-injection text into the assistant. In read-only mode there
+  is no write operation that injected text could trigger. In write mode,
+  see the addendum below.
 - **The rate limiter is per process.** Several MCP clients share one
   Netatmo per-user quota. Caching and per-call request caps keep usage
   low.
@@ -63,3 +64,35 @@ These are settings in the GitHub UI and are not configured from code:
   deployment branches to `main` before the first publish.
 - Configure **npm trusted publishing** for
   `christophe77/netatmo-energy-mcp` / `release.yml` on npmjs.com.
+
+## Addendum: write mode review, 2026-10-08 (pre-v0.2)
+
+An independent adversarial review of the opt-in write mode
+([ADR-0012](adr/0012-opt-in-write-mode.md)) found no critical or high
+issues. Fixed before release, with tests:
+
+| Severity | Finding                                                                                                                                                                                                          | Resolution                                                                                                                                         |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Medium   | Schedule edits were planned from cached data (up to 10 min old). Since the whole schedule is sent back, an edit made meanwhile in the Netatmo app could be reverted.                                             | Plans always read fresh data, and every confirmation is bound to a digest of the exact request: if the data changed, the confirmation is rejected. |
+| Medium   | Incomplete schedule data (a zone without room setpoints, missing away or frost-guard temperature) would have been sent back as empty or null values.                                                             | Such schedules are refused with `UNSUPPORTED_CAPABILITY`; nothing is sent.                                                                         |
+| Low      | On protocol 2026-07-28, any `confirm: true` answer was honoured, even one the server never asked for.                                                                                                            | The question carries a single-use, server-side `requestState` bound to the exact change; answers without it are rejected.                          |
+| Low      | A refresh response without `scope` stored an empty scope, silently disabling write mode.                                                                                                                         | The previously granted scope is kept.                                                                                                              |
+| Low      | Network errors and 5xx after sending were logged as `failed`; a 200 response without `status: "ok"` counted as success; a failure while reading the body escaped the "may or may not have been applied" message. | Logged as `unknown`; unconfirmed responses and body read failures are reported as uncertain.                                                       |
+| Low      | Updating an unnamed schedule could rename it to an empty string.                                                                                                                                                 | `name` is omitted when unknown.                                                                                                                    |
+| Low      | Names containing newlines could add fake lines to a confirmation message.                                                                                                                                        | Control characters are collapsed in previews and confirmation messages.                                                                            |
+
+Accepted residual risks:
+
+- **The token flow cannot prove a human agreed.** With clients without
+  elicitation, the model receives the token and could call again on its
+  own, for example after prompt-injection text in a room name.
+  Mitigations: the preview says names are data, not instructions;
+  limits still apply; `NETATMO_MCP_CONFIRM=elicitation` disables this
+  flow entirely.
+- **Write mode follows the scope Netatmo reports.** If Netatmo keeps
+  previously consented scopes on a plain `login`, write mode stays on.
+  `NETATMO_MCP_WRITE=0` turns it off regardless; `status` shows the
+  current state.
+- **Room names are matched loosely** (case, accents, then partial
+  match). The preview always shows the resolved room before anything is
+  applied.

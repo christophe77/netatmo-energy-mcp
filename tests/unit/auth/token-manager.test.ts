@@ -66,6 +66,21 @@ describe('TokenManager', () => {
     expect(saved?.clientSecret).toBe('sec');
   });
 
+  it('keeps the granted scope when a refresh response omits it', async () => {
+    const store = await seed({
+      ...tokens(1, now + 60_000),
+      scope: ['read_thermostat', 'write_thermostat'],
+    });
+    const noScope: Record<string, unknown> = { ...tokenResponse(2) };
+    delete noScope.scope;
+    const tm = manager(
+      store,
+      fakeFetch(() => json(noScope)),
+    );
+    expect(await tm.getAccessToken()).toBe('access-2');
+    expect((await store.read())?.tokens?.scope).toEqual(['read_thermostat', 'write_thermostat']);
+  });
+
   it('single-flights concurrent refreshes within a process', async () => {
     const store = await seed(tokens(1, now - 1));
     const f = fakeFetch(async () => {

@@ -34,8 +34,9 @@ regenerate your app at <https://dev.netatmo.com/apps>.
 
 In scope:
 
-- Anything that could make the server **change heating settings**. The
-  project must be read-only.
+- Anything that could make the server **change heating settings** when it
+  shouldn't: in read-only mode (the default), or in write mode without the
+  user's confirmation or outside the configured limits.
 - **Leaks of tokens, client secrets or account data** through output,
   logs, files or errors.
 - **Weaknesses in the OAuth login** (state handling, loopback callback)
@@ -50,8 +51,11 @@ Out of scope:
 
 ## Security design
 
-- Read-only by construction: only the `read_thermostat` scope, plus an
-  allow-list of read endpoints.
+- Read-only by default: only the `read_thermostat` scope and an allow-list
+  of read endpoints. Write mode is opt-in (`login --write`): write tools
+  are registered only then, every change needs the user's confirmation,
+  values are bounded, and each change is logged locally
+  ([ADR-0012](docs/adr/0012-opt-in-write-mode.md)).
 - No network listener except the short-lived loopback login callback.
 - No telemetry.
 - Owner-only credential storage.

@@ -110,7 +110,7 @@ export class EnergyService {
       ...this.summary(home),
       temperature_control_mode: home.temperatureControlMode,
       default_manual_duration_min: home.defaultManualDurationMin,
-      schedules: home.schedules,
+      schedules: home.schedules.map((s) => ({ id: s.id, name: s.name, selected: s.selected })),
       rooms: home.rooms.map((r) => roomView(home, r.id)),
       devices: home.modules.map((m) => deviceView(home, m)),
     };

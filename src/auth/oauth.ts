@@ -1,13 +1,17 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { AppError, NetatmoUnavailableError } from '../errors.js';
+import { WRITE_SCOPE } from '../netatmo/write-endpoints.js';
 import { USER_AGENT } from '../version.js';
 import type { TokenSet } from './credential-store.js';
 
 export const AUTHORIZE_URL = 'https://api.netatmo.com/oauth2/authorize';
 export const TOKEN_URL = 'https://api.netatmo.com/oauth2/token';
 
-/** v0.1 is read-only: this is the only scope ever requested (ADR-0002). */
+/** Default scope: read-only (ADR-0002). */
 export const READ_ONLY_SCOPES = ['read_thermostat'] as const;
+
+/** Requested only by `login --write` (opt-in write mode, ADR-0012). */
+export const READ_WRITE_SCOPES = [...READ_ONLY_SCOPES, WRITE_SCOPE] as const;
 
 export type FetchFn = typeof fetch;
 

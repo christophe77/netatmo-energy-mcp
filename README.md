@@ -8,17 +8,21 @@
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 ![Node.js >= 22.19](https://img.shields.io/badge/node-%3E%3D22.19-339933)
 
-A read-only **Netatmo MCP server** for **Netatmo smart thermostats and
-smart radiator valves**. It gives AI assistants structured access to
-your heating:
+A **Netatmo MCP server** for **Netatmo smart thermostats and smart
+radiator valves**. It gives AI assistants structured access to your
+heating:
 
 - room temperatures and setpoints
 - heating demand and boiler activity
 - temperature history
 - deterministic heating analytics
+- weekly heating schedules
+- optional heating control: room setpoints, away / frost-guard mode and
+  schedules, with every change confirmed by you
 
-It runs on your machine, talks only to the official **Netatmo Energy API**,
-and cannot change any heating setting.
+It runs on your machine and talks only to the official **Netatmo Energy
+API**. It is **read-only by default**: it can change your heating only if
+you enable [write mode](#write-mode-heating-control) at login.
 
 It works with any [Model Context Protocol](https://modelcontextprotocol.io)
 client that runs local servers, **whatever the model**:
@@ -34,7 +38,7 @@ It also works in Windsurf / Devin Desktop, Zed, Roo Code, Kilo Code,
 JetBrains AI Assistant, Kiro and Warp. See
 [all compatible clients](#compatible-ai-assistants-and-mcp-clients).
 
-> **Status: early release (0.1.0).** The Netatmo API integration has been
+> **Status: early release (0.2.0).** The Netatmo API integration has been
 > validated on a real installation; feedback and device reports are welcome.
 
 ## Why this project?
@@ -50,8 +54,9 @@ ask questions about it.
 
 This project is a small bridge between the Netatmo Energy API and any
 MCP-compatible AI assistant. Ask in plain language: "Which room was
-coldest last night?" The assistant calls a precise, read-only tool and
-answers from your data. It doesn't guess.
+coldest last night?" The assistant calls a precise tool and answers from
+your data. It doesn't guess. With write mode enabled, you can also say
+"Set the bedroom to 19 °C until 7 am", then confirm the change.
 
 The few other Netatmo MCP servers target Netatmo **weather stations**.
 This one is built for **thermostats, radiator valves and heating history**.
@@ -80,8 +85,18 @@ See [docs/research.md](docs/research.md) for the comparison.
   - Room rankings.
   - Rule-based detection of unusual readings, each with severity and
     confidence.
-- **14 MCP tools, 4 resources and 4 prompts** (daily report, anomaly
-  review, room comparison, heating pattern review).
+- **Weekly schedules:** zones (Comfort, Night, Eco…), room setpoints per
+  zone and the timetable, as readable days and times.
+- **Heating control (opt-in write mode)**
+  - Temporary room setpoints that always end (3 h by default, at most
+    24 h), or a return to the schedule.
+  - Home mode: schedule, away or frost guard, optionally until a date.
+  - Switch, create, edit and rename weekly schedules.
+  - Every change is previewed and needs your explicit confirmation.
+    Temperatures are limited to 7–28 °C by default.
+- **15 read-only MCP tools, 6 heating-control tools, 4 resources and 4
+  prompts** (daily report, anomaly review, room comparison, heating
+  pattern review).
 - **Simple setup**
   - OAuth2 browser login with a single `login` command.
   - Tokens stored securely and refreshed automatically.
@@ -106,8 +121,9 @@ npx -y netatmo-energy-mcp login
 ```
 
 `login` asks for the client ID and secret, then opens your browser so you
-can sign in on netatmo.com and approve **read-only** access. Then check
-the setup:
+can sign in on netatmo.com and approve **read-only** access. To let the
+assistant change your heating, run `login --write` instead (see
+[write mode](#write-mode-heating-control)). Then check the setup:
 
 ```bash
 npx -y netatmo-energy-mcp doctor
@@ -181,6 +197,10 @@ chooses the tools; the table shows which ones answer each question.
 | "Did my heating behave unusually last night?"                        | `netatmo_detect_anomalies`                                    |
 | "Give me yesterday's heating report."                                | prompt `heating_daily_report` → `netatmo_get_heating_summary` |
 | "Are any valve batteries low?"                                       | `netatmo_get_device_status`                                   |
+| "What does my weekly schedule look like?"                            | `netatmo_get_schedules`                                       |
+| _Write mode:_ "Heat the office to 21 °C for 2 hours."                | `netatmo_set_room_setpoint`                                   |
+| _Write mode:_ "I'm away until Sunday evening."                       | `netatmo_set_home_mode`                                       |
+| _Write mode:_ "Lower the night zone to 17 °C in every bedroom."      | `netatmo_get_schedules` → `netatmo_update_schedule`           |
 
 Boiler "run time" is the time the thermostat **requested heat**. Netatmo
 does not measure gas or energy consumption, so this project never reports
@@ -188,9 +208,9 @@ it.
 
 ## Available MCP tools
 
-All tools are read-only and need only the `read_thermostat` OAuth scope.
-The full reference, with arguments and outputs, is generated from the
-server itself: [docs/tools.md](docs/tools.md).
+The read-only tools need only the `read_thermostat` OAuth scope. The full
+reference, with arguments and outputs, is generated from the server
+itself: [docs/tools.md](docs/tools.md).
 
 | Tool                              | Description                                             |
 | --------------------------------- | ------------------------------------------------------- |
@@ -208,9 +228,59 @@ server itself: [docs/tools.md](docs/tools.md).
 | `netatmo_get_heating_summary`     | Per-room comfort metrics plus boiler time over a period |
 | `netatmo_compare_rooms`           | Room metrics and rankings                               |
 | `netatmo_detect_anomalies`        | Unusual readings with severity, confidence and evidence |
+| `netatmo_get_schedules`           | Weekly schedules: zones, room setpoints, timetable      |
+
+**Write mode only.** Each change needs your confirmation.
+
+| Tool                        | Description                                                 |
+| --------------------------- | ----------------------------------------------------------- |
+| `netatmo_set_room_setpoint` | Temporary room setpoint or boost, or back to the schedule   |
+| `netatmo_set_home_mode`     | Schedule, away or frost-guard mode, optionally until a date |
+| `netatmo_switch_schedule`   | Make another weekly schedule active                         |
+| `netatmo_create_schedule`   | New schedule copied from an existing one, with changes      |
+| `netatmo_update_schedule`   | Room setpoints per zone, away/frost temperatures, timetable |
+| `netatmo_rename_schedule`   | Rename a schedule (experimental: undocumented endpoint)     |
 
 Resources: `netatmo://homes` and `netatmo://homes/{homeId}/rooms`,
 `…/devices` and `…/status`.
+
+## Write mode (heating control)
+
+Write mode is **off by default**. To enable it, log in again with:
+
+```bash
+npx -y netatmo-energy-mcp login --write
+```
+
+This also requests the `write_thermostat` OAuth scope. The heating control
+tools appear after you restart your MCP client.
+
+Safeguards:
+
+- **You confirm every change.** Clients that support MCP elicitation ask
+  you directly. With other clients, the first call only returns a preview
+  and a one-time token. The assistant must show you the preview and get
+  your agreement before calling again. Nothing is sent to Netatmo before
+  that. This second flow relies on the assistant following its
+  instructions; set `NETATMO_MCP_CONFIRM=elicitation` to allow changes
+  only through a confirmation prompt shown by your client. If your client
+  cancels every change without showing anything, set
+  `NETATMO_MCP_CONFIRM=token`.
+- **Limits.** Temperatures must stay between 7 and 28 °C. Manual setpoints
+  end after 3 h by default and 24 h at most. Change these with
+  `NETATMO_MCP_MIN_TEMP`, `NETATMO_MCP_MAX_TEMP` and
+  `NETATMO_MCP_MAX_SETPOINT_HOURS`.
+- **Kill switch.** `NETATMO_MCP_WRITE=0` forces read-only mode, even with
+  a write-enabled login.
+- **Audit log.** Every applied or failed change is appended to
+  `changes.log` in your configuration folder.
+- **No automatic retries.** A failed write is never resent blindly.
+
+Netatmo has no API to delete a schedule: schedules created here can only
+be deleted in the Netatmo app. Renaming a schedule and choosing a
+schedule with home mode "schedule" use undocumented Netatmo parameters,
+so they are marked experimental. Details:
+[docs/configuration.md](docs/configuration.md#write-mode).
 
 ## Supported devices
 
@@ -261,8 +331,9 @@ by model. Please report any client-specific problem.
 This project uses Netatmo's OAuth2 authorization code flow. You sign in
 on netatmo.com; your Netatmo password is never seen by this tool.
 
-**Scope.** Only `read_thermostat` is requested. A leaked token couldn't
-change your heating.
+**Scope.** By default only `read_thermostat` is requested, so a leaked
+token couldn't change your heating. `login --write` also requests
+`write_thermostat`.
 
 **Your own app.** Each user registers a free Netatmo developer app. The
 client secret cannot be shipped in open-source code.
@@ -275,9 +346,10 @@ Details: [docs/authentication.md](docs/authentication.md).
 
 ## Privacy & security
 
-**What leaves your machine.** Only HTTPS requests to `api.netatmo.com`,
-and only to 4 read endpoints. The code has no path to Netatmo's write
-endpoints, and a test fails if one is added.
+**What leaves your machine.** Only HTTPS requests to `api.netatmo.com`.
+In read-only mode they only reach 4 read endpoints: the client refuses
+any write before it touches the network, and tests enforce this. In
+write mode, a change is sent only after you confirm it.
 
 **What stays local.**
 
@@ -302,7 +374,7 @@ Read more:
 
 ## Architecture
 
-![Architecture: an AI assistant talks over stdio to the local read-only server, which calls the Netatmo API](docs/assets/architecture.svg)
+![Architecture: an AI assistant talks over stdio to the local server, which calls the Netatmo API (read-only by default)](docs/assets/architecture.svg)
 
 The Netatmo client and the analytics are independent of MCP. Design
 decisions are recorded as [ADRs](docs/adr/README.md), and
@@ -320,7 +392,7 @@ These come from the Netatmo Energy API; details are in
   current value. A future opt-in collector may record it
   ([ADR-0011](docs/adr/0011-future-snapshot-collector.md)).
 - **No outdoor temperature in the Energy API.** Weather context is
-  planned for v0.3.
+  planned for v0.4.
 - **History resolution is 30 minutes at best.** Each request returns at
   most 1024 values, so long ranges use coarser scales.
 - **The documentation doesn't match the API in places.** Live data shows
@@ -333,13 +405,14 @@ These come from the Netatmo Energy API; details are in
 
 | Version   | Focus                                        |
 | --------- | -------------------------------------------- |
-| v0.1      | Read-only MCP server (this release)          |
-| v0.2      | Richer diagnostics                           |
-| v0.3      | Weather context (Open-Meteo)                 |
-| v0.4–v0.6 | Thermal modelling, predictions, digital twin |
+| v0.1      | Read-only MCP server                         |
+| v0.2      | Schedules, opt-in heating control (current)  |
+| v0.3      | Richer diagnostics                           |
+| v0.4      | Weather context (Open-Meteo)                 |
+| v0.5–v0.7 | Thermal modelling, predictions, digital twin |
 | v1.0      | A stable interface                           |
 
-Write operations will never be enabled by default.
+Write mode will never be enabled by default.
 See [docs/roadmap.md](docs/roadmap.md).
 
 ## Contributing

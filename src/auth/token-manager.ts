@@ -141,6 +141,8 @@ export class TokenManager implements TokenProvider {
           this.opts.fetch ? { fetch: this.opts.fetch } : {},
         );
         next = res.tokens;
+        // OAuth 2.0: a refresh response without `scope` keeps the scope originally granted.
+        if (next.scope.length === 0) next = { ...next, scope: tokens.scope };
       } catch (error) {
         if (error instanceof InvalidGrantError) {
           // Lost a race with a writer that did not hold the lock (e.g. a concurrent login)?
