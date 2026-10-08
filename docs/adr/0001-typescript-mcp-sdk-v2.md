@@ -1,6 +1,6 @@
 # ADR-0001: TypeScript, MCP SDK v2 and the toolchain
 
-Status: Proposed
+Status: Accepted (2026-10-08)
 Date: 2026-10-08
 
 ## Context

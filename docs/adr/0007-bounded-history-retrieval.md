@@ -1,6 +1,6 @@
 # ADR-0007: Bounded, chunked history retrieval
 
-Status: Proposed
+Status: Accepted (2026-10-08)
 Date: 2026-10-08
 
 ## Context

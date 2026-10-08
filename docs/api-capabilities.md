@@ -1,6 +1,6 @@
 # Netatmo Energy API — Capability Matrix
 
-Status: research snapshot, 2026-10-08. Not yet validated against a live account.
+Status: research snapshot, 2026-10-08. Not yet validated against a live account (see [live-validation.md](live-validation.md)).
 
 This document records what the Netatmo Connect API offers for Energy
 devices (thermostats, smart radiator valves, relays) and what
@@ -145,6 +145,39 @@ Signal scales: RF 90 = low … 60 = full; Wi-Fi 86 = poor … 56 = good
 
 `boiler on` means the thermostat's relay / OpenTherm demand was active.
 It is **not** gas consumption and **not** burner modulation.
+
+#### Boiler activity: units, derived values, limitations
+
+Documented units (VERIFIED wording, not yet checked against live data):
+
+| Measure | Documented unit | Derived "active minutes in bucket" |
+|---|---|---|
+| `boileron` at step *s* (30 min, 1 h or 3 h) | average minutes active **per hour** | `boileron × s / 60 min` |
+| `sum_boiler_on` at 1 day, 1 week or 1 month | minutes active in the bucket | used as is |
+
+Live checks to run before any analytics depend on these
+([live-validation.md](live-validation.md)):
+
+1. For `1hour` buckets, `boileron + boileroff` should be about 60. If
+   it is, the per-hour unit is confirmed.
+2. Over the same days, Σ(`boileron` at `1hour`) should be about
+   Σ(`sum_boiler_on` at `1day`). If it is, the derivation formula is
+   confirmed.
+3. At `30min`, check whether the value is still per hour or per
+   30-minute bucket.
+4. Whether day buckets follow local or UTC midnight.
+
+Limitations that every tool output carries in its `caveats` field:
+
+- These values show when the thermostat **requested heat**: relay
+  closed, or OpenTherm demand active. They are not burner runtime at a
+  known power. They are not gas or energy use.
+- They are **aggregates**. A value of 20 minutes in an hour could be one
+  20-minute run or ten 2-minute runs. **The number of boiler cycles
+  cannot be derived** from these measures. `homestatus.boiler_status`
+  is a point-in-time value only.
+- With OpenTherm (OTH/OTM), the boiler modulates, so "on" minutes and
+  heat delivered are related only loosely.
 
 ### Scales and limits
 

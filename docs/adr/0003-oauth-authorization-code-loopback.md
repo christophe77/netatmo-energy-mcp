@@ -1,6 +1,6 @@
 # ADR-0003: OAuth authorization code with loopback callback
 
-Status: Proposed
+Status: Accepted (2026-10-08)
 Date: 2026-10-08
 
 ## Context

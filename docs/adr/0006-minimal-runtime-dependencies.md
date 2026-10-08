@@ -1,6 +1,6 @@
 # ADR-0006: Minimal runtime dependencies
 
-Status: Proposed
+Status: Accepted (2026-10-08)
 Date: 2026-10-08
 
 ## Context

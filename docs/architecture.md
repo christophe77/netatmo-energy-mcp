@@ -1,6 +1,6 @@
 # Architecture
 
-Status: proposal for review (Phase 0). Nothing here is implemented yet.
+Status: accepted 2026-10-08. Sections are implemented phase by phase; see the README for current status.
 
 ## 1. Goals and non-goals
 
@@ -321,7 +321,7 @@ open").
 | `netatmo_compare_rooms` | getroommeasure × rooms | rankings |
 | `netatmo_detect_anomalies` | getroommeasure (+ setpoint) | rules in §8 |
 
-**Differences from the brief, proposed for review:**
+**Differences from the brief (approved 2026-10-08):**
 
 - **`netatmo_get_room_temperature` and `netatmo_get_room_setpoint` are
   merged** into `netatmo_get_room_status`. Both come from the same
@@ -419,3 +419,51 @@ MCP client config needs no secrets: `{"command": "npx", "args": ["-y",
 
 Fixtures are synthetic or sanitized: random IDs (`70:ee:50:00:00:01`),
 generic room names, no coordinates, no emails.
+
+## 13. Extension point: future snapshot collector (not in v0.1)
+
+Netatmo provides no history for `heating_power_request` (room heating
+demand) or `boiler_status`. The Thermal Twin project will need both. A
+later release may add an **opt-in** collector that polls `homestatus`
+and stores snapshots locally. v0.1 prepares for it but does not include
+it ([ADR-0011](adr/0011-future-snapshot-collector.md)).
+
+```mermaid
+flowchart LR
+  subgraph v01["v0.1 (exists)"]
+    NC[NetatmoClient] --> SN["toHomeSnapshot()<br/>domain/heating"]
+    RL[RateLimiter] --- NC
+    SN --> TOOLS[MCP status tools]
+  end
+  subgraph future["Future (not implemented)"]
+    COL["collect command<br/>interval + jitter"] --> NC
+    COL --> SN
+    SN --> ST[("SnapshotStore<br/>local JSONL / sqlite")]
+    ST --> HT["history tools<br/>source: collector"]
+  end
+```
+
+Seams that exist from v0.1 onward:
+
+- **`HomeSnapshot`**: one normalised, timestamped type for current
+  status. The MCP tools use it now, and a collector would persist it
+  unchanged.
+- **`NetatmoClient` + `RateLimiter`**: shared services. The rate
+  budget is passed in as configuration, so a collector could run with
+  its own smaller budget.
+- **`Clock`**: injectable time source for scheduling and
+  gap detection.
+
+Collector requirements recorded for later:
+
+- Configurable interval (default 5 min, minimum 2 min, with jitter)
+- Local storage only
+- Snapshots of heating demand, boiler status, room temperature and setpoint
+- Missing-tick detection
+- Rate-limit awareness
+- Off by default
+- Runs as a separate process (`netatmo-energy-mcp collect`), never
+  inside the MCP server
+
+Any series built from snapshots will always be labelled as locally
+collected, never as Netatmo measurements.

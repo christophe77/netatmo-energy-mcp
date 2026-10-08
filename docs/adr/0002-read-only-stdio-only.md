@@ -1,6 +1,6 @@
 # ADR-0002: Read-only, stdio-only v0.1
 
-Status: Proposed
+Status: Accepted (2026-10-08)
 Date: 2026-10-08
 
 ## Context

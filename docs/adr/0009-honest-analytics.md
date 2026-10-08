@@ -1,6 +1,6 @@
 # ADR-0009: Deterministic analytics and honest semantics
 
-Status: Proposed
+Status: Accepted (2026-10-08)
 Date: 2026-10-08
 
 ## Context

@@ -1,6 +1,6 @@
 # ADR-0008: MCP tool surface and error model
 
-Status: Proposed
+Status: Accepted (2026-10-08)
 Date: 2026-10-08
 
 ## Context
