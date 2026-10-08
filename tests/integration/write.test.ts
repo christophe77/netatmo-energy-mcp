@@ -68,6 +68,7 @@ async function setup(
     era?: 'legacy' | 'modern';
     env?: Record<string, string>;
     failWrites?: boolean;
+    clock?: ReturnType<typeof fakeClock>;
   } = {},
 ) {
   const config = loadConfig({ NETATMO_MCP_CONFIG_DIR: dir, ...opts.env });
@@ -90,7 +91,7 @@ async function setup(
   const writeMode = isWriteModeEnabled(config, await rt0.store.read());
   const rt = createRuntime(config, silentLogger, {
     fetch: f,
-    clock: fakeClock(NOW_MS),
+    clock: opts.clock ?? fakeClock(NOW_MS),
     allowWrites: writeMode,
   });
   const [ct, st] = InMemoryTransport.createLinkedPair();
@@ -219,6 +220,37 @@ describe('two-step confirmation (clients without elicitation)', () => {
       .trim()
       .split('\n');
     expect(JSON.parse(log[0]!)).toMatchObject({ action: 'set_room_setpoint', outcome: 'applied' });
+  });
+
+  it('counts duration_minutes from the preview, so a later confirmation applies what was shown', async () => {
+    const clock = fakeClock(NOW_MS);
+    const { client, writes } = await setup({ clock });
+    const args = { room_name: 'sejour', mode: 'manual', temperature: 10, duration_minutes: 10 };
+    const preview = await call(client, 'netatmo_set_room_setpoint', args);
+    expect(preview.structuredContent.changes[0]).toMatch(/until 2026-01-01T01:10:00\+01:00/);
+
+    clock.advance(30_000); // the user takes 30 s to answer
+    const done = await call(client, 'netatmo_set_room_setpoint', {
+      ...args,
+      confirmation_token: preview.structuredContent.confirmation_token,
+    });
+    expect(done.structuredContent).toMatchObject({ status: 'applied' });
+    expect(writes[0]!.form.endtime).toBe(String(NOW_S + 600));
+  });
+
+  it('refuses to apply a confirmed setpoint whose end time has already passed', async () => {
+    const clock = fakeClock(NOW_MS);
+    const { client, writes } = await setup({ clock });
+    const args = { room_name: 'sejour', mode: 'manual', temperature: 10, duration_minutes: 5 };
+    const preview = await call(client, 'netatmo_set_room_setpoint', args);
+    clock.advance(4.5 * 60_000);
+    const res = await call(client, 'netatmo_set_room_setpoint', {
+      ...args,
+      confirmation_token: preview.structuredContent.confirmation_token,
+    });
+    expect(res.isError).toBe(true);
+    expect(res.content[0]!.text).toMatch(/already passed/);
+    expect(writes).toHaveLength(0);
   });
 });
 

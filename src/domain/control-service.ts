@@ -72,6 +72,11 @@ export class ControlService {
     this.clock = clock ?? systemClock;
   }
 
+  /** Current time (ms) of the service clock, used to time-stamp previews. */
+  now(): number {
+    return this.clock.now();
+  }
+
   // ------------------------------------------------------------------ read
 
   async getSchedules(
@@ -95,6 +100,8 @@ export class ControlService {
       until?: string | undefined;
     },
     opts: CallOptions = {},
+    /** Time of the preview (ms); a duration is counted from it. Default: now. */
+    at?: number,
   ): Promise<ChangePlan> {
     const home = await this.freshHome(input.home_id, opts);
     const tz = zone(home);
@@ -139,7 +146,7 @@ export class ControlService {
       this.checkTemp(input.temperature);
       temp = input.temperature;
     }
-    const end = this.endTime(input, tz);
+    const end = this.endTime(input, tz, at);
     const request = {
       home_id: home.id,
       room_id: room.id,
@@ -361,8 +368,11 @@ export class ControlService {
   private endTime(
     input: { duration_minutes?: number | undefined; until?: string | undefined },
     tz: string,
+    at?: number,
   ): number {
-    const now = Math.floor(this.clock.now() / 1000);
+    const realNow = Math.floor(this.clock.now() / 1000);
+    // Counted from the preview, so confirming later yields the end time the user saw.
+    const now = at !== undefined ? Math.floor(at / 1000) : realNow;
     if (input.duration_minutes !== undefined && input.until !== undefined) {
       throw new InvalidArgumentError('Use either duration_minutes or until, not both.');
     }
@@ -372,6 +382,11 @@ export class ControlService {
         : now + Math.round((input.duration_minutes ?? this.limits.defaultSetpointHours * 60) * 60);
     if (end < now + 5 * 60)
       throw new InvalidArgumentError('The setpoint must last at least 5 minutes.');
+    if (end <= realNow + 60) {
+      throw new InvalidArgumentError('The confirmed end time has already passed.', {
+        hint: 'Call the tool again without confirmation_token to get a fresh preview.',
+      });
+    }
     if (end > now + this.limits.maxSetpointHours * 3600) {
       throw new InvalidArgumentError(
         `Manual setpoints may last at most ${this.limits.maxSetpointHours} h.`,

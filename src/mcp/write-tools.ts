@@ -141,7 +141,7 @@ export function registerWriteTools(
 ): void {
   const c: ConfirmContext = {
     server,
-    tokens: new ConfirmationTokens(),
+    tokens: new ConfirmationTokens(() => control.now()),
     logger,
     mode: options.confirmMode ?? 'auto',
   };
@@ -177,8 +177,8 @@ export function registerWriteTools(
       annotations: annotations(false, true),
     },
     (args, ctx) =>
-      confirmAndApply(c, ctx, 'netatmo_set_room_setpoint', args, () =>
-        control.planRoomSetpoint(args, signalOf(ctx)),
+      confirmAndApply(c, ctx, 'netatmo_set_room_setpoint', args, (at) =>
+        control.planRoomSetpoint(args, signalOf(ctx), at),
       ),
   );
 
