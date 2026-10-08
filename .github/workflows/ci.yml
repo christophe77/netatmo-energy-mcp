@@ -39,7 +39,30 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
-      - run: pnpm test
+      - name: Unit, integration and MCP protocol tests (with coverage thresholds)
+        run: pnpm test:coverage
       - run: pnpm build
       - name: Smoke test the built CLI
         run: node dist/index.js --version
+
+  package:
+    name: Package validation
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Lint package metadata
+        run: pnpm dlx publint@0.3.25 --strict
+      - name: Pack, install and talk MCP to the installed binary
+        run: pnpm check:package
+      - name: Dependency audit (production)
+        run: pnpm audit --prod --audit-level high

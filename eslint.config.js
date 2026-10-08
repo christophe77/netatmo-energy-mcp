@@ -20,8 +20,13 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.js'],
+    files: ['**/*.js', '**/*.mjs'],
     extends: [tseslint.configs.disableTypeChecked],
+  },
+  {
+    // Build/CI scripts print to the console; only the server must keep stdout clean.
+    files: ['scripts/**'],
+    rules: { 'no-console': 'off' },
   },
   {
     files: ['tests/**/*.ts'],
