@@ -9,9 +9,8 @@
 ![Node.js >= 22.19](https://img.shields.io/badge/node-%3E%3D22.19-339933)
 
 Un **serveur MCP Netatmo** en lecture seule pour les **thermostats
-intelligents et vannes thermostatiques Netatmo**. Il donne à Claude,
-Cursor et aux autres clients [Model Context Protocol](https://modelcontextprotocol.io)
-un accès structuré à votre chauffage :
+intelligents et vannes thermostatiques Netatmo**. Il donne aux
+assistants IA un accès structuré à votre chauffage :
 
 - températures et consignes des pièces
 - demande de chauffe et activité de la chaudière
@@ -20,6 +19,20 @@ un accès structuré à votre chauffage :
 
 Il tourne sur votre machine, ne communique qu'avec l'**API Netatmo Energy**
 officielle et ne peut modifier aucun réglage de chauffage.
+
+Il fonctionne avec tout client [Model Context Protocol](https://modelcontextprotocol.io)
+capable de lancer des serveurs locaux, **quel que soit le modèle** :
+
+- **Claude** : Claude Desktop, Claude Code
+- **GPT / OpenAI** : Codex CLI, VS Code + GitHub Copilot, Cursor
+- **Gemini** : Gemini CLI, VS Code + GitHub Copilot
+- **Mistral et d'autres** via les clients multi-modèles
+- **LLM locaux** (Llama, Qwen, Mistral, DeepSeek…) : LM Studio, et Ollama
+  via Goose, Continue, Cline, AnythingLLM, LibreChat ou Open WebUI
+
+Il fonctionne aussi dans Windsurf / Devin Desktop, Zed, Roo Code, Kilo
+Code, JetBrains AI Assistant, Kiro et Warp. Voir
+[tous les clients compatibles](#assistants-ia-et-clients-mcp-compatibles).
 
 > **État : première version (0.1.0).** L'intégration de l'API Netatmo a été
 > validée sur une installation réelle ; retours et rapports de compatibilité
@@ -109,16 +122,12 @@ npx -y netatmo-energy-mcp doctor
 > puis utilisez `node /chemin/vers/netatmo-energy-mcp/dist/index.js` à la
 > place de `npx -y netatmo-energy-mcp`.
 
-### 3. Connecter votre client MCP
+### 3. Connecter votre assistant IA
 
-**Claude Code**
-
-```bash
-claude mcp add --transport stdio --scope user netatmo-energy -- npx -y netatmo-energy-mcp
-```
-
-**Claude Desktop.** Modifiez `claude_desktop_config.json` (Réglages →
-Développeur → Modifier la configuration) :
+La plupart des clients utilisent le même bloc JSON `mcpServers`. Il
+fonctionne pour Claude Desktop, Cursor, Windsurf / Devin Desktop, Cline,
+Roo Code, Kiro, LM Studio, JetBrains AI Assistant, AnythingLLM, Warp et
+Gemini CLI :
 
 ```json
 {
@@ -131,23 +140,32 @@ Développeur → Modifier la configuration) :
 }
 ```
 
-**Cursor.** Modifiez `~/.cursor/mcp.json` :
+Clients en ligne de commande :
+
+```bash
+# Claude Code
+claude mcp add --transport stdio --scope user netatmo-energy -- npx -y netatmo-energy-mcp
+# OpenAI Codex CLI
+codex mcp add netatmo-energy -- npx -y netatmo-energy-mcp
+# GitHub Copilot CLI
+copilot mcp add netatmo-energy -- npx -y netatmo-energy-mcp
+```
+
+**VS Code + GitHub Copilot.** Ajoutez ceci à `.vscode/mcp.json` ; notez la
+clé `servers` :
 
 ```json
 {
-  "mcpServers": {
-    "netatmo-energy": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "netatmo-energy-mcp"]
-    }
+  "servers": {
+    "netatmo-energy": { "type": "stdio", "command": "npx", "args": ["-y", "netatmo-energy-mcp"] }
   }
 }
 ```
 
 Aucun secret dans ces fichiers : `login` les a enregistrés dans votre
-dossier de configuration utilisateur. Des fichiers prêts à copier et des
-notes pour Windows, macOS et Linux se trouvent dans [examples/](examples/).
+dossier de configuration utilisateur. L'emplacement des fichiers pour
+chaque client, ainsi que Zed, Continue, Goose, LibreChat, Kilo Code, Msty
+et Open WebUI, se trouvent dans [examples/](examples/README.md) (en anglais).
 
 ### 4. Poser une question
 
@@ -215,19 +233,35 @@ Lancez `netatmo-energy-mcp probe` et ouvrez un
 [rapport de compatibilité](https://github.com/christophe77/netatmo-energy-mcp/issues/new?template=device_compatibility.yml)
 pour compléter ce tableau. Les données du probe sont anonymisées.
 
-## Clients MCP compatibles
+## Assistants IA et clients MCP compatibles
 
-Tout client MCP capable de lancer un serveur **stdio** local fonctionne.
-Des exemples de configuration sont fournis pour :
+C'est un **serveur MCP local (stdio)** standard : il n'est lié à aucun
+éditeur d'IA. Tout client MCP capable de lancer des serveurs locaux peut
+l'utiliser, avec le modèle de son choix.
 
-- **Claude Desktop**
-- **Claude Code**
-- **Cursor**
-- une configuration `mcpServers` générique
+| Client                                                                    | Modèles                                                          |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Claude Desktop, Claude Code                                               | Claude                                                           |
+| OpenAI Codex CLI                                                          | modèles GPT d'OpenAI                                             |
+| Gemini CLI                                                                | Google Gemini                                                    |
+| VS Code + GitHub Copilot (mode agent), GitHub Copilot CLI                 | GPT, Claude, Gemini et autres modèles Copilot                    |
+| Cursor, Windsurf / Devin Desktop, Zed, Warp, Kiro, JetBrains AI Assistant | plusieurs modèles hébergés                                       |
+| Cline, Roo Code, Kilo Code, Continue                                      | plusieurs, y compris modèles locaux (Ollama, LM Studio)          |
+| LM Studio                                                                 | **modèles open source locaux** : Llama, Qwen, Mistral, DeepSeek… |
+| Goose, AnythingLLM, LibreChat, Msty Studio                                | nombreux fournisseurs, dont **Ollama**                           |
+| Open WebUI                                                                | Ollama et autres, via le proxy `mcpo`                            |
 
-Voir [examples/](examples/). Le serveur est testé avec le client officiel
-du SDK MCP et le MCP Inspector. La vérification de bout en bout avec
-chaque client est en cours ; signalez tout problème propre à un client.
+La configuration de chaque client, vérifiée dans sa documentation
+officielle : [examples/](examples/README.md) (en anglais).
+
+**Non compatibles :** les assistants qui n'acceptent que des serveurs MCP
+_distants_ (applications et connecteurs ChatGPT, Claude.ai sur le web,
+Mistral Le Chat). Ce serveur est local par conception : vos identifiants
+ne quittent jamais votre machine.
+
+**Tests.** Le serveur est testé avec le client officiel du SDK MCP et le
+MCP Inspector. La qualité des appels d'outils avec de petits modèles
+locaux dépend du modèle. Signalez tout problème propre à un client.
 
 ## Authentification
 

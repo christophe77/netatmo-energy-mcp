@@ -7,6 +7,16 @@ minor versions may contain breaking changes; they are always listed.
 
 ## [Unreleased]
 
+### Documentation
+
+- Compatibility with any local (stdio) MCP client and model, not just
+  Claude: setup verified against official docs for VS Code + GitHub
+  Copilot, Copilot CLI, Codex CLI, Gemini CLI, Windsurf / Devin Desktop,
+  Zed, Cline, Roo Code, Kilo Code, Continue, JetBrains AI Assistant, Kiro,
+  Warp, LM Studio, Goose, LibreChat, AnythingLLM, Msty and Open WebUI
+  (via mcpo). Remote-only assistants (ChatGPT, Claude.ai web, Le Chat)
+  are listed as not compatible.
+
 ## [0.1.0] - 2026-10-08
 
 First public version: a read-only MCP server for Netatmo Energy.

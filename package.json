@@ -1,7 +1,7 @@
 {
   "name": "netatmo-energy-mcp",
   "version": "0.1.0",
-  "description": "Read-only MCP server for Netatmo smart thermostats and radiator valves: heating status, history and analytics for AI assistants.",
+  "description": "Read-only MCP server for Netatmo smart thermostats and radiator valves. Works with any MCP client and LLM (Claude, GPT, Gemini, local models): heating status, history and analytics.",
   "keywords": [
     "netatmo",
     "netatmo-energy",
@@ -13,7 +13,22 @@
     "smart-home",
     "home-automation",
     "heating",
-    "claude"
+    "ai",
+    "llm",
+    "ai-assistant",
+    "claude",
+    "claude-desktop",
+    "openai",
+    "codex",
+    "gemini",
+    "gemini-cli",
+    "github-copilot",
+    "vscode",
+    "cursor",
+    "windsurf",
+    "lm-studio",
+    "ollama",
+    "local-llm"
   ],
   "homepage": "https://github.com/christophe77/netatmo-energy-mcp#readme",
   "bugs": {
