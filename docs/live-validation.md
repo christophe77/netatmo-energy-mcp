@@ -48,8 +48,9 @@ parameters. This does not show whether it enforces them.
 node dist/index.js doctor
 ```
 
-Expect every line to show `[ok]`. On Windows, the config folder line
-should show "2 principals with access".
+Expect every line to show `[ok]`. On Windows, the config folder line lists who has
+access: your account and SYSTEM (and Administrators, if the folder was
+created from an elevated terminal).
 
 ## 4. Probe
 

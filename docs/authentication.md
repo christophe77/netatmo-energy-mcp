@@ -84,7 +84,8 @@ access and refresh tokens.
 - **macOS / Linux**: folder `0700`, file `0600`, so only your user can
   read them.
 - **Windows**: when the folder is created, its access list is restricted
-  to your user account and `SYSTEM`, with inheritance removed. Files
+  to your user account and `SYSTEM` (plus Administrators if created from an
+  elevated terminal), with inheritance removed. Files
   inside inherit that restriction. `doctor` shows the current access list.
 - Updates are atomic (written to a temp file, then renamed), so the file
   is never left half-written.

@@ -110,6 +110,19 @@ export function windowsAclPrincipals(target: string): string[] | undefined {
   return [...principals];
 }
 
+/**
+ * Broad Windows groups that must never appear in the config folder ACL (English and French
+ * display names; icacls output is localised). Administrators are tolerated: when the folder is
+ * created from an elevated process Windows keeps an explicit Administrators entry, and
+ * administrators can access any file anyway.
+ */
+const BROAD_GROUPS =
+  /(^|\\)(Users|Utilisateurs|Everyone|Tout le monde|Authenticated Users|Utilisateurs authentifi.s|Guests|Invit.s)$/i;
+
+export function broadWindowsPrincipals(principals: string[]): string[] {
+  return principals.filter((p) => BROAD_GROUPS.test(p));
+}
+
 /** Windows: raw icacls listing of `dir`, for `doctor`. */
 export function describeWindowsAcl(dir: string): string | undefined {
   const res = spawnSync(system32('icacls.exe'), [dir], {

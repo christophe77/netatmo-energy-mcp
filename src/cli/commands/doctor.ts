@@ -2,7 +2,11 @@ import fs from 'node:fs/promises';
 import { createRuntime } from '../../app.js';
 import type { StoredCredentials } from '../../auth/credential-store.js';
 import { READ_ONLY_SCOPES } from '../../auth/oauth.js';
-import { describeWindowsAcl, windowsAclPrincipals } from '../../auth/secure-fs.js';
+import {
+  broadWindowsPrincipals,
+  describeWindowsAcl,
+  windowsAclPrincipals,
+} from '../../auth/secure-fs.js';
 import { resolveClientCredentials } from '../../auth/token-manager.js';
 import { summarizeDevices, toHomes } from '../../domain/homes/topology.js';
 import { AppError } from '../../errors.js';
@@ -41,11 +45,16 @@ async function runDoctor({ config, out, logger }: CommandContext): Promise<numbe
     const stat = await fs.stat(config.paths.dir);
     if (process.platform === 'win32') {
       const acl = describeWindowsAcl(config.paths.dir);
-      const principals = windowsAclPrincipals(config.paths.dir)?.length ?? 0;
+      const principals = windowsAclPrincipals(config.paths.dir) ?? [];
+      const broad = broadWindowsPrincipals(principals);
       const inherited = acl?.includes('(I)') ?? true;
       report(
-        acl && principals <= 2 && !inherited ? 'ok' : 'warn',
-        `Config folder ${config.paths.dir} (${acl ? `${principals} principals with access${inherited ? ', inherited permissions' : ''}` : 'ACL unreadable'})`,
+        acl && broad.length === 0 && !inherited ? 'ok' : 'warn',
+        `Config folder ${config.paths.dir} (${
+          acl
+            ? `access: ${principals.join(', ')}${inherited ? '; inherited permissions' : ''}${broad.length > 0 ? '; broad groups have access' : ''}`
+            : 'ACL unreadable'
+        })`,
       );
     } else {
       const mode = stat.mode & 0o777;

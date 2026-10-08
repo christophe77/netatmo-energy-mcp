@@ -49,7 +49,10 @@ alternatives add native build risk on three operating systems.
   SYSTEM. Files created inside inherit that ACL. The SID is read with
   `whoami /user`, and no shell is involved. This is best effort: if it
   fails, a warning is logged and `doctor` reports it. The directory
-  under `%APPDATA%` is already private to the user profile by default.
+  under `%APPDATA%` is already private to the user profile by default. When the
+  folder is created from an elevated process, Windows also keeps an explicit
+  Administrators entry; administrators can access any file anyway, so this is accepted.
+  `doctor` warns only if broad groups (Users, Everyone, Authenticated Users) have access.
 - **Recovering from a lost race.** If a refresh fails with
   `invalid_grant`, the process re-reads the credentials file. If the
   refresh token there differs from the one it just used, another
