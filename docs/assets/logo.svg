@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-labelledby="t d">
+  <title id="t">Netatmo Energy MCP</title>
+  <desc id="d">Project mark: a radiator with a temperature trace above it. Independent project, not a Netatmo logo.</desc>
+  <rect width="128" height="128" rx="28" fill="#0E3B43"/>
+  <!-- temperature trace -->
+  <polyline points="22,46 38,40 52,44 66,30 80,36 94,24 106,28" fill="none" stroke="#F59E42" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="94" cy="24" r="5" fill="#F59E42"/>
+  <!-- radiator -->
+  <rect x="24" y="60" width="80" height="6" rx="3" fill="#E6F4F1"/>
+  <rect x="24" y="96" width="80" height="6" rx="3" fill="#E6F4F1"/>
+  <rect x="28" y="56" width="10" height="50" rx="5" fill="#E6F4F1"/>
+  <rect x="45" y="56" width="10" height="50" rx="5" fill="#E6F4F1"/>
+  <rect x="62" y="56" width="10" height="50" rx="5" fill="#E6F4F1"/>
+  <rect x="79" y="56" width="10" height="50" rx="5" fill="#E6F4F1"/>
+</svg>

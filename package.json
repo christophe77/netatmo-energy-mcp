@@ -34,6 +34,7 @@
   "files": [
     "dist",
     "README.md",
+    "README.fr.md",
     "LICENSE"
   ],
   "engines": {
@@ -51,7 +52,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
-    "check:package": "node scripts/check-package.mjs"
+    "check:package": "node scripts/check-package.mjs",
+    "docs:tools": "node scripts/gen-tools-doc.mjs",
+    "docs:check": "node scripts/gen-tools-doc.mjs --check"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.3.1",

@@ -1,0 +1,28 @@
+name: Feature request
+description: Suggest an improvement or a new capability.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check the [roadmap](https://github.com/christophe77/netatmo-energy-mcp/blob/main/docs/roadmap.md)
+        and [API limitations](https://github.com/christophe77/netatmo-energy-mcp/blob/main/docs/api-capabilities.md) first:
+        some data (e.g. gas consumption, valve demand history) is not provided by the Netatmo API.
+        v0.x is **read-only**; requests to change heating settings are out of scope for now.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      placeholder: 'I want to ask my assistant … but …'
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Tool, analytics or documentation change you have in mind.
+  - type: textarea
+    id: data
+    attributes:
+      label: Netatmo data involved
+      description: Which Netatmo endpoint or field would this rely on, if you know?

@@ -1,0 +1,52 @@
+name: Device compatibility report
+description: Report how netatmo-energy-mcp works with your Netatmo / Legrand / BTicino equipment.
+labels: [device-compatibility]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you! These reports decide which devices are listed as tested.
+        Run `npx -y netatmo-energy-mcp probe` and paste the content of `report.md` below.
+        `report.md` and `responses.json` are sanitized (IDs replaced, names generic, no location).
+        **Never attach `responses.raw.json` or `credentials.json`.**
+  - type: checkboxes
+    id: devices
+    attributes:
+      label: Equipment in your installation
+      options:
+        - label: Smart Thermostat (NATherm1)
+        - label: Smart Radiator Valves (NRV)
+        - label: Thermostat Relay (NAPlug)
+        - label: OpenTherm Modulating Thermostat / Gateway (OTM / OTH)
+        - label: BTicino Smarther with Netatmo (BNS)
+        - label: Other (describe below)
+  - type: input
+    id: boiler
+    attributes:
+      label: Heating system
+      placeholder: e.g. individual gas boiler (on/off), heat pump, OpenTherm boiler…
+  - type: dropdown
+    id: result
+    attributes:
+      label: Overall result
+      options: [Everything works, Partially works, Does not work]
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Content of probe report.md
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: What worked or did not work?
+      description: Tools you tried, unexpected values, errors.
+  - type: input
+    id: version
+    attributes:
+      label: netatmo-energy-mcp version
+    validations:
+      required: true

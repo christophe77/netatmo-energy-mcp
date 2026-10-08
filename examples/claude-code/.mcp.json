@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "netatmo-energy": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "netatmo-energy-mcp"]
+    }
+  }
+}

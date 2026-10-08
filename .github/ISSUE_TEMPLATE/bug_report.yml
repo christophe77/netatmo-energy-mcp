@@ -1,0 +1,63 @@
+name: Bug report
+description: Something does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. **Never paste tokens, client secrets or `credentials.json`.**
+        Output of `status`, `doctor` and `probe` (`report.md`) is safe to share.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Ran `npx -y netatmo-energy-mcp login`
+        2. Asked Claude Desktop "…"
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `netatmo-energy-mcp doctor`
+      render: text
+  - type: textarea
+    id: error
+    attributes:
+      label: Error message or tool result
+      description: The `error.code` and `message` returned by the tool, or the log lines (stderr). Remove names if you prefer.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: netatmo-energy-mcp version
+      placeholder: output of `netatmo-energy-mcp --version`
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: MCP client
+      options: [Claude Desktop, Claude Code, Cursor, MCP Inspector, Other]
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Windows, macOS, Linux]
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      placeholder: output of `node --version`

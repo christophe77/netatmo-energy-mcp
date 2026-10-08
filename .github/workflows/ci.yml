@@ -62,6 +62,8 @@ jobs:
       - run: pnpm build
       - name: Lint package metadata
         run: pnpm dlx publint@0.3.25 --strict
+      - name: Tool reference (docs/tools.md) matches the server
+        run: pnpm docs:check
       - name: Pack, install and talk MCP to the installed binary
         run: pnpm check:package
       - name: Dependency audit (production)
