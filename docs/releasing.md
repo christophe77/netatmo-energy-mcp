@@ -55,4 +55,7 @@ version needs two separate human approvals before it reaches users.
   cannot be published.
 - **0.1.0 was published manually.** It was the first version and had to
   exist before a trusted publisher could be configured. Later versions
-  use the workflow.
+  use the workflow; 0.2.0 (2026-10-08) was the first, which also
+  validated the trusted publisher.
+- **Local npm too old for `npm stage`?** Use
+  `npx -y npm@11.21.0 stage approve <stage-id>`.
