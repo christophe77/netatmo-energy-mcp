@@ -78,14 +78,15 @@ describe('probe analysis', () => {
     ).toEqual({ n: 2, min: 60, median: 60, max: 60 });
   });
 
-  it('cross-checks hourly against daily boiler minutes over fully covered days', () => {
-    const hourly = Array.from({ length: 48 }, (_, i) => ({ t: i * 3600, values: [10, 50] }));
+  it('cross-checks hourly against daily heat demand (seconds) over fully covered days', () => {
+    // 100 s on / 500 s off per 600 s sample → 1/6 of each hour → 600 s per hour → 240 min per day.
+    const hourly = Array.from({ length: 48 }, (_, i) => ({ t: i * 3600, values: [100, 500] }));
     const daily = [
-      { t: 0, values: [240, 1200] },
-      { t: 86_400, values: [240, 1200] },
+      { t: 0, values: [14_400, 72_000] },
+      { t: 86_400, values: [14_400, 72_000] },
       { t: 172_800, values: [0, 0] },
     ];
-    expect(compareHourlyWithDaily(hourly, daily, 3600)).toEqual({
+    expect(compareHourlyWithDaily(hourly, daily)).toEqual({
       days: 2,
       hourlyMinutes: 480,
       dailyMinutes: 480,

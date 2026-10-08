@@ -3,6 +3,7 @@
  * docs/api-capabilities.md §10 from recorded responses, without exposing identifiers.
  */
 import type { MeasurePoint } from '../netatmo/measures.js';
+import { boilerOnSeconds } from '../domain/heating/boiler.js';
 import { formatLocal } from '../utils/dates.js';
 
 export function sortedKeys(objects: unknown[]): string[] {
@@ -91,7 +92,7 @@ export function formatStats(s: Stats | undefined): string {
   return s ? `n=${s.n}, min=${s.min}, median=${s.median}, max=${s.max}` : 'no data';
 }
 
-/** on + off per bucket: ≈ 60 confirms "minutes per hour" units for boileron/boileroff. */
+/** on + off per bucket. Observed: ≈ 600 (s per sample) sub-daily, ≈ 86 400 (s per day) daily. */
 export function onOffSums(points: MeasurePoint[]): Stats | undefined {
   const sums = points
     .map((p) =>
@@ -102,31 +103,39 @@ export function onOffSums(points: MeasurePoint[]): Stats | undefined {
 }
 
 /**
- * Compare Σ(boileron × step/60) from hourly data with Σ sum_boiler_on from daily data over the
- * days fully covered by both series. Agreement confirms the documented units and the formula.
+ * Compare heat-demand time derived from hourly boileron/boileroff with Σ sum_boiler_on from
+ * daily data, over the days fully covered by both series. Agreement validates boilerOnSeconds().
+ * Hourly buckets are anchored to the request start, so small edge differences are expected.
  */
 export function compareHourlyWithDaily(
   hourly: MeasurePoint[],
   daily: MeasurePoint[],
-  hourlyStepSeconds: number,
 ): { days: number; hourlyMinutes: number; dailyMinutes: number } | undefined {
   if (hourly.length === 0 || daily.length < 2) return undefined;
   const first = hourly[0]?.t ?? 0;
   const last = hourly[hourly.length - 1]?.t ?? 0;
   let days = 0;
-  let hourlyMinutes = 0;
-  let dailyMinutes = 0;
+  let hourlySeconds = 0;
+  let dailySeconds = 0;
   for (let i = 0; i < daily.length - 1; i++) {
     const start = daily[i]?.t ?? 0;
     const end = daily[i + 1]?.t ?? 0;
     const on = daily[i]?.values[0];
-    if (start < first || end > last + hourlyStepSeconds || on == null) continue;
-    const inDay = hourly.filter((p) => p.t >= start && p.t < end);
+    if (start < first || end > last + 3600 || on == null) continue;
     days += 1;
-    dailyMinutes += on;
-    hourlyMinutes += inDay.reduce((n, p) => n + (p.values[0] ?? 0) * (hourlyStepSeconds / 3600), 0);
+    dailySeconds += on;
+    for (const p of hourly) {
+      if (p.t >= start && p.t < end)
+        hourlySeconds += boilerOnSeconds('1hour', p.values[0], p.values[1]) ?? 0;
+    }
   }
-  return days === 0 ? undefined : { days, hourlyMinutes: Math.round(hourlyMinutes), dailyMinutes };
+  return days === 0
+    ? undefined
+    : {
+        days,
+        hourlyMinutes: Math.round(hourlySeconds / 60),
+        dailyMinutes: Math.round(dailySeconds / 60),
+      };
 }
 
 /** Distinct (timestamp mod step) values and local times of the first few buckets. */

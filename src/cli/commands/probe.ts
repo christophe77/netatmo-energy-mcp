@@ -182,6 +182,7 @@ async function runProbe({ config, out, logger, argv }: CommandContext): Promise<
         ...sortedKeys(rooms),
         ...sortedKeys(modules),
         ...sortedKeys(rawHomeList),
+        ...sortedKeys(rawModules),
       ]);
       md.push('- Spelling variants:', ...spellingReport(allKeys).map((l) => `  - ${l}`));
       const snap = toHomeSnapshot(status.body, status.timeServer, Date.now());
@@ -258,14 +259,14 @@ async function runProbe({ config, out, logger, argv }: CommandContext): Promise<
     describeBoiler('1day sum_boiler_on,sum_boiler_off', daily, home);
     if (daily) {
       md.push(
-        `  - Daily on+off sums (1440 = minutes per day): ${formatStats(onOffSums(daily.points))}`,
+        `  - Daily on+off sums (observed unit: seconds; 86400 = full day): ${formatStats(onOffSums(daily.points))}`,
       );
     }
     if (hourly && daily) {
-      const cmp = compareHourlyWithDaily(hourly.points, daily.points, 3600);
+      const cmp = compareHourlyWithDaily(hourly.points, daily.points);
       md.push(
         cmp
-          ? `- Cross-check over ${cmp.days} full day(s): Σ hourly boileron = ${cmp.hourlyMinutes} min vs Σ daily sum_boiler_on = ${cmp.dailyMinutes} min`
+          ? `- Cross-check over ${cmp.days} full day(s): heat demand from hourly data = ${cmp.hourlyMinutes} min vs Σ daily sum_boiler_on = ${cmp.dailyMinutes} min`
           : '- Cross-check hourly vs daily: not enough overlapping data',
       );
     }
@@ -317,7 +318,7 @@ async function runProbe({ config, out, logger, argv }: CommandContext): Promise<
     md.push(`  - ${alignment(res.points, SCALE_SECONDS[res.scale], home.timezone)}`);
     if (res.scale !== '1day') {
       md.push(
-        `  - on+off per bucket (60 = "minutes per hour" units): ${formatStats(onOffSums(res.points))}`,
+        `  - on+off per bucket (observed unit: seconds per 600 s sample; ≈600 expected): ${formatStats(onOffSums(res.points))}`,
       );
     }
     if (res.warnings.length > 0) md.push(`  - Warnings: ${res.warnings.join('; ')}`);

@@ -39,7 +39,9 @@ export function estimateRequests(range: TimeRange, scale: Scale): number {
 
 /**
  * Fetch a complete series by paging forward from `range.begin`: each page returns up to
- * 1024 values; the next page starts one second after the last returned timestamp.
+ * 1024 values. Sub-daily buckets are anchored to the requested date_begin (observed
+ * 2026-10-08), so the next page starts exactly one step after the last returned bucket to keep
+ * the same grid. Month buckets vary in length; there the next page starts one second later.
  * Stops when a page is not full, the range is covered, or progress stalls.
  */
 export async function fetchPaged(
@@ -76,7 +78,7 @@ export async function fetchPaged(
       warnings.push('Netatmo returned data outside the requested window; paging stopped.');
       break;
     }
-    cursor = last.t + 1;
+    cursor = scale === '1month' ? last.t + 1 : last.t + SCALE_SECONDS[scale];
   }
   return {
     points: dedupeAndSort(all).filter((p) => p.t >= range.begin && p.t <= range.end),

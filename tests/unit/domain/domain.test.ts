@@ -123,7 +123,7 @@ describe('history paging', () => {
     });
     expect(calls).toEqual([
       [0, 3_600_000],
-      [1800 * 1023 + 1, 3_600_000],
+      [1800 * 1024, 3_600_000], // next page starts one step later, on the same grid
     ]);
     expect(res.requests).toBe(2);
     expect(res.points).toHaveLength(2001);

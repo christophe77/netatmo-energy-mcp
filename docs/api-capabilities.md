@@ -1,6 +1,6 @@
 # Netatmo Energy API — Capability Matrix
 
-Status: research snapshot, 2026-10-08. Not yet validated against a live account (see [live-validation.md](live-validation.md)).
+Status: research snapshot 2026-10-08, partly validated against a live installation the same day (§11).
 
 This document records what the Netatmo Connect API offers for Energy
 devices (thermostats, smart radiator valves, relays) and what
@@ -11,6 +11,7 @@ confidence label:
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | **VERIFIED**     | Stated in Netatmo's official documentation (OpenAPI spec "Netatmo - Energy" v1.1.2 or the prose pages on dev.netatmo.com).        |
 | **CORROBORATED** | Not (or differently) documented, but relied on by maintained client libraries (pyatmo / Home Assistant, lnetatmo, Riges/Netatmo). |
+| **OBSERVED**     | Checked against a live installation (dated; see §11). Takes precedence over the documentation when they conflict.                 |
 | **UNCERTAIN**    | Conflicting or missing evidence. Must be confirmed against the live API before we depend on it.                                   |
 | **UNSUPPORTED**  | No documented way to obtain this data. We will not fabricate it.                                                                  |
 
@@ -36,24 +37,24 @@ We will use `GET` (documented) for all read endpoints.
 
 ## 2. OAuth2
 
-| Item                                            | Value                                                                                                   | Status                                               |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Authorize URL                                   | `https://api.netatmo.com/oauth2/authorize`                                                              | VERIFIED                                             |
-| Token URL                                       | `https://api.netatmo.com/oauth2/token` (form-encoded POST)                                              | VERIFIED                                             |
-| Grant types                                     | `authorization_code`, `refresh_token`                                                                   | VERIFIED                                             |
-| Password grant                                  | Not documented; removed in 2022–2023 per community reports                                              | VERIFIED absent / CORROBORATED removed               |
-| `client_secret`                                 | Required for code exchange **and** refresh → confidential client                                        | VERIFIED                                             |
-| `state`                                         | Supported, recommended for CSRF protection                                                              | VERIFIED                                             |
-| PKCE (`code_challenge`)                         | Not mentioned anywhere in docs, spec, portal JS or libraries                                            | UNCERTAIN (assume unsupported)                       |
-| `redirect_uri`                                  | Must exactly match the one registered in the app (if any). Portal only validates that it contains `://` | VERIFIED                                             |
-| Loopback `http://localhost:<port>/...` accepted | Community examples use it; not documented                                                               | UNCERTAIN                                            |
-| Access token lifetime                           | `expires_in: 10800` (3 h) in doc example                                                                | VERIFIED (example)                                   |
-| Legacy `expire_in` key                          | Also present in responses, read by lnetatmo                                                             | CORROBORATED                                         |
-| Refresh token rotation                          | New refresh token on every refresh; **previous tokens are invalidated immediately**                     | VERIFIED                                             |
-| Scope for Energy read                           | `read_thermostat`                                                                                       | VERIFIED                                             |
-| Scope for Energy write                          | `write_thermostat` (never requested in v0.1)                                                            | VERIFIED                                             |
-| Scope for BTicino Smarther (BNS)                | `read_smarther`                                                                                         | VERIFIED (scope table); need for BNS homes UNCERTAIN |
-| Default scope if none requested                 | `read_station` (Weather)                                                                                | VERIFIED                                             |
+| Item                                            | Value                                                                                                                                                        | Status                                               |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| Authorize URL                                   | `https://api.netatmo.com/oauth2/authorize`                                                                                                                   | VERIFIED                                             |
+| Token URL                                       | `https://api.netatmo.com/oauth2/token` (form-encoded POST)                                                                                                   | VERIFIED                                             |
+| Grant types                                     | `authorization_code`, `refresh_token`                                                                                                                        | VERIFIED                                             |
+| Password grant                                  | Not documented; removed in 2022–2023 per community reports                                                                                                   | VERIFIED absent / CORROBORATED removed               |
+| `client_secret`                                 | Required for code exchange **and** refresh → confidential client                                                                                             | VERIFIED                                             |
+| `state`                                         | Supported, recommended for CSRF protection                                                                                                                   | VERIFIED                                             |
+| PKCE (`code_challenge`)                         | Not mentioned anywhere in docs, spec, portal JS or libraries                                                                                                 | UNCERTAIN (assume unsupported)                       |
+| `redirect_uri`                                  | Must exactly match the one registered in the app (if any). Portal only validates that it contains `://`                                                      | VERIFIED                                             |
+| Loopback `http://localhost:<port>/...` accepted | Works when registered in the app                                                                                                                             | OBSERVED                                             |
+| Access token lifetime                           | `expires_in: 10800` (3 h) in doc example                                                                                                                     | VERIFIED (example)                                   |
+| Legacy `expire_in` key                          | Also present in responses, read by lnetatmo                                                                                                                  | CORROBORATED                                         |
+| Refresh token rotation                          | Documented: new refresh token on every refresh, previous one invalidated immediately. **Observed: same refresh token returned, previous one still accepted** | VERIFIED (doc) / OBSERVED (contradicts)              |
+| Scope for Energy read                           | `read_thermostat`                                                                                                                                            | VERIFIED                                             |
+| Scope for Energy write                          | `write_thermostat` (never requested in v0.1)                                                                                                                 | VERIFIED                                             |
+| Scope for BTicino Smarther (BNS)                | `read_smarther`                                                                                                                                              | VERIFIED (scope table); need for BNS homes UNCERTAIN |
+| Default scope if none requested                 | `read_station` (Weather)                                                                                                                                     | VERIFIED                                             |
 
 **Consequence for design:** refresh-token rotation with immediate
 invalidation means two processes refreshing at the same time will lock
@@ -138,59 +139,56 @@ Signal scales: RF 90 = low … 60 = full; Wi-Fi 86 = poor … 56 = good
 
 ### `getmeasure` types (boiler, thermostat module)
 
-| `type`                             | Meaning                                             | Scales                     | Status   |
-| ---------------------------------- | --------------------------------------------------- | -------------------------- | -------- |
-| `boileron` / `boileroff`           | **Average minutes per hour** the boiler is on / off | `30min`, `1hour`, `3hours` | VERIFIED |
-| `sum_boiler_on` / `sum_boiler_off` | **Sum of minutes** on / off over the step           | `1day`, `1week`, `1month`  | VERIFIED |
+| `type`                             | Documented meaning                    | **Observed** meaning (2026-10-08, NATherm1)                                | Scales                     |
+| ---------------------------------- | ------------------------------------- | -------------------------------------------------------------------------- | -------------------------- |
+| `boileron` / `boileroff`           | Average **minutes per hour** on / off | Average **seconds per 600 s sample** on / off (on + off ≈ 600 at any step) | `30min`, `1hour`, `3hours` |
+| `sum_boiler_on` / `sum_boiler_off` | **Sum of minutes** on / off           | **Sum of seconds** on / off (on + off ≈ 86 400 for a full day)             | `1day`, `1week`, `1month`  |
 
+**The documented unit is wrong**, at least for the NATherm1 (OBSERVED, see §11).
 `boiler on` means the thermostat's relay / OpenTherm demand was active.
 It is **not** gas consumption and **not** burner modulation.
 
 #### Boiler activity: units, derived values, limitations
 
-Documented units (VERIFIED wording, not yet checked against live data):
+Implemented in `src/domain/heating/boiler.ts` (`boilerOnSeconds`):
 
-| Measure                                     | Documented unit                     | Derived "active minutes in bucket" |
-| ------------------------------------------- | ----------------------------------- | ---------------------------------- |
-| `boileron` at step _s_ (30 min, 1 h or 3 h) | average minutes active **per hour** | `boileron × s / 60 min`            |
-| `sum_boiler_on` at 1 day, 1 week or 1 month | minutes active in the bucket        | used as is                         |
+| Measure                                    | Heat-demand seconds in a bucket of length _s_                                               |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `boileron`, `boileroff` (30 min, 1 h, 3 h) | `boileron / (boileron + boileroff) × s` (or `boileron / 600 × s` if `boileroff` is missing) |
+| `sum_boiler_on` (1 day, 1 week, 1 month)   | used as is                                                                                  |
 
-Live checks to run before any analytics depend on these
-([live-validation.md](live-validation.md)):
-
-1. For `1hour` buckets, `boileron + boileroff` should be about 60. If
-   it is, the per-hour unit is confirmed.
-2. Over the same days, Σ(`boileron` at `1hour`) should be about
-   Σ(`sum_boiler_on` at `1day`). If it is, the derivation formula is
-   confirmed.
-3. At `30min`, check whether the value is still per hour or per
-   30-minute bucket.
-4. Whether day buckets follow local or UTC midnight.
+Validation on a live NATherm1 (3 days): heat demand derived from hourly
+data agreed with the daily sums within about 5 %. The remaining difference
+comes from hourly buckets being anchored to the request start rather than
+to midnight. Individual sub-daily samples vary between about 390 and 1060
+for on + off, so the ratio form is preferred over a fixed 600.
 
 Limitations that every tool output carries in its `caveats` field:
 
 - These values show when the thermostat **requested heat**: relay
   closed, or OpenTherm demand active. They are not burner runtime at a
   known power. They are not gas or energy use.
-- They are **aggregates**. A value of 20 minutes in an hour could be one
+- They are **aggregates**. Twenty minutes of demand in an hour could be one
   20-minute run or ten 2-minute runs. **The number of boiler cycles
   cannot be derived** from these measures. `homestatus.boiler_status`
   is a point-in-time value only.
-- With OpenTherm (OTH/OTM), the boiler modulates, so "on" minutes and
-  heat delivered are related only loosely.
+- With OpenTherm (OTH/OTM), the boiler modulates, so "on" time and
+  heat delivered are related only loosely. OTM has not been tested.
 
 ### Scales and limits
 
-| Item                        | Value                                                                              | Status                                                    |
-| --------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `scale` enum                | `30min`, `1hour`, `3hours`, `1day`, `1week`, `1month`                              | VERIFIED                                                  |
-| `scale=max` (raw)           | In Weather API; **not** in Energy enum                                             | UNCERTAIN                                                 |
-| Max points per request      | `limit` default and max = **1024**                                                 | VERIFIED                                                  |
-| `date_begin` / `date_end`   | Unix seconds ("Local Unix Time" in spec; expected UTC epoch)                       | VERIFIED / UNCERTAIN semantics                            |
-| `real_time=false` (default) | Timestamps shifted by `scale/2` (bucket centre)                                    | VERIFIED                                                  |
-| `optimize=true` (default)   | `body: [{ beg_time, step_time, value: [[v1, v2…]…] }]`, new segment after each gap | CORROBORATED (spec schema for `getroommeasure` disagrees) |
-| `optimize=false`            | `body: { "<ts>": [v1, v2…] }`                                                      | CORROBORATED                                              |
-| Retention                   | Undocumented ("oldest data available")                                             | UNCERTAIN                                                 |
+| Item                        | Value                                                                                | Status                                                   |
+| --------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| `scale` enum                | `30min`, `1hour`, `3hours`, `1day`, `1week`, `1month`                                | VERIFIED                                                 |
+| `scale=max` (raw)           | In Weather API; **not** in Energy enum                                               | UNCERTAIN                                                |
+| Max points per request      | `limit` default and max = **1024**                                                   | VERIFIED                                                 |
+| `date_begin` / `date_end`   | Unix seconds, UTC epoch                                                              | OBSERVED                                                 |
+| Sub-daily bucket grid       | Buckets start **exactly at `date_begin`** (not at clock boundaries)                  | OBSERVED                                                 |
+| Daily bucket grid           | Buckets start at **local midnight** in the home time zone                            | OBSERVED                                                 |
+| `real_time=false` (default) | Timestamps shifted by `scale/2` (bucket centre); `real_time=true` gives bucket start | VERIFIED + OBSERVED                                      |
+| `optimize=true` (default)   | `body: [{ beg_time, step_time, value: [[v1, v2…]…] }]`, new segment after each gap   | OBSERVED (the spec schema for `getroommeasure` is wrong) |
+| `optimize=false`            | `body: { "<ts>": [v1, v2…] }`                                                        | OBSERVED                                                 |
+| Retention                   | Undocumented ("oldest data available")                                               | UNCERTAIN                                                |
 
 Points per request at max `limit` = 1024:
 
@@ -282,3 +280,34 @@ after a real installation has been checked.
 
 The maintainer's installation (NATherm1-class thermostat + 6 NRV +
 gas boiler) can answer 1–11. Results go into this file with a dated note.
+
+## 11. Live observations (2026-10-08)
+
+Installation: 1 × NAPlug relay, 1 × NATherm1 thermostat (on/off) driving an
+individual gas boiler, 6 × NRV valves, 7 rooms, time zone Europe/Paris.
+Collected with `netatmo-energy-mcp probe` (30 read-only requests in
+total). No real identifiers or measurements are stored in this repository.
+
+| #   | Question                              | Observation                                                                                                                                                                                                                                                                           |
+| --- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | PKCE                                  | Not tested (login without PKCE works).                                                                                                                                                                                                                                                |
+| 2   | Loopback redirect                     | **Works**: `http://localhost:8977/callback` registered in the app, automatic browser flow succeeded.                                                                                                                                                                                  |
+| 3   | Token response                        | Fields `access_token`, `refresh_token`, `expires_in` and `expire_in` (both `10800`), and `scope` as an **array**.                                                                                                                                                                     |
+| 4   | Refresh-token rotation                | **Not observed**: the refresh returned the **same** refresh token, and the previous one was still accepted afterwards. This contradicts the documentation. The lock-based design (ADR-0005) is kept, because the documented behaviour may still apply to other accounts or in future. |
+| 5   | `getroommeasure` body                 | `optimize=true`: segments `{beg_time, step_time, value}` (library shape; the spec schema is wrong). A new segment starts after a data gap (seen on one room). `optimize=false`: `{ "<ts>": [...] }` map.                                                                              |
+| 6   | `scale=max`                           | Not tested.                                                                                                                                                                                                                                                                           |
+| 7   | Timestamps                            | UTC epoch seconds. Sub-daily buckets start **exactly at `date_begin`** (not clock-aligned). `1day` buckets start at **local midnight**. `real_time=false` shifts stamps by half a step.                                                                                               |
+| 8   | Retention                             | Not tested yet.                                                                                                                                                                                                                                                                       |
+| 9   | Field spellings                       | Library spellings throughout: `open_window`, `rf_strength`, `wifi_strength`, `modules_bridged`, `therm_setpoint_default_duration`. NAPlug also reports `rf_strength` and `room_id`. NRV reports `battery_level`.                                                                      |
+| 10  | Room ID type                          | JSON string. Room `type` values seen: `custom`, `kitchen`, `bedroom`, `bathroom`, `corridor`.                                                                                                                                                                                         |
+| 11  | Rate limiting                         | 15 requests per probe at ≤ 4 per 10 s, all HTTP 200. No rate-limit headers returned.                                                                                                                                                                                                  |
+| 12  | Boiler history                        | Works for NATherm1 (`device_id` = NAPlug, `module_id` = NATherm1). **Units are seconds**, not minutes (§6).                                                                                                                                                                           |
+| 13  | Per-app burst limit (single-user app) | No 429 at 4 requests per 10 s. Higher rates not tested.                                                                                                                                                                                                                               |
+
+Other details:
+
+- `homestatus` omitted `therm_setpoint_end_time` for rooms in `schedule`
+  mode. Treat it as optional.
+- `heating_power_request` was reported for every room (values seen: 0 and
+  100).
+- `boiler_status` was `true` while one room requested 100 %.

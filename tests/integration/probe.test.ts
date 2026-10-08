@@ -19,7 +19,8 @@ afterEach(async () => {
 });
 
 function series(begin: number, step: number, n: number, row: number[]) {
-  const start = Math.ceil(begin / step) * step;
+  // Observed: sub-daily buckets start at date_begin; daily buckets at local midnight.
+  const start = step >= 86_400 ? Math.ceil(begin / step) * step - 7200 : begin;
   return { status: 'ok', body: [{ beg_time: start, step_time: step, value: Array(n).fill(row) }] };
 }
 
@@ -36,8 +37,8 @@ function api(req: RecordedRequest) {
     case '/api/getmeasure':
       return json(
         q.get('scale') === '1day'
-          ? series(begin, 86_400, 4, [240, 1200])
-          : series(begin, q.get('scale') === '30min' ? 1800 : 3600, 96, [10, 50]),
+          ? series(begin, 86_400, 4, [14_400, 72_000])
+          : series(begin, q.get('scale') === '30min' ? 1800 : 3600, 96, [100, 500]),
       );
     default:
       return json({ error: { code: 31, message: 'Method not found' } }, 404);
@@ -92,7 +93,7 @@ describe('probe command', () => {
     expect(report).toContain('Thermostat type **NATherm1**, bridged by **NAPlug**');
     expect(report).toContain('Valves (NRV): 4');
     expect(report).toMatch(/open_window \/ open_windows: both/);
-    expect(report).toMatch(/on\+off per bucket .*median=60/);
+    expect(report).toMatch(/on\+off per bucket .*median=600\b/);
     expect(report).toMatch(/Cross-check over \d+ full day\(s\)/);
     for (const text of [report, responses]) {
       for (const secret of [

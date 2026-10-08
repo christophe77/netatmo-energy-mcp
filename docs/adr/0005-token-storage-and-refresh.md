@@ -82,6 +82,14 @@ alternatives add native build risk on three operating systems.
   fail. Netatmo binds refresh tokens to the app that issued them. The
   server detects the mismatch and asks the user to run `login` again.
 
+### Live observation (2026-10-08)
+
+On the maintainer's account, a refresh returned the **same** refresh token,
+and the previous token was still accepted afterwards. That contradicts the
+documentation. The design above is kept unchanged: it is correct under both
+behaviours, costs little, and the documented rotation may apply to other
+accounts or come back later.
+
 ## Consequences
 
 - No native dependencies, and the same behaviour on every operating

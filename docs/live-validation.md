@@ -101,10 +101,12 @@ time. None will be until the MCP server exists.
 
 Boiler semantics ([api-capabilities §6](api-capabilities.md#boiler-activity-units-derived-values-limitations)):
 
-- "on+off per bucket": a median of **60** confirms "minutes per hour"
-  for `boileron`/`boileroff`. Compare the 30-minute and 1-hour lines.
-- "Daily on+off sums": **1440** confirms minutes per day.
-- "Cross-check": if Σ hourly ≈ Σ daily, the conversion formula is right.
+- "on+off per bucket": observed ≈ **600** on a NATherm1 (seconds per 600 s
+  sample). The documentation says minutes per hour, which would give 60.
+- "Daily on+off sums": observed ≈ **86 400** (seconds per day). The
+  documentation says minutes, which would give 1440.
+- "Cross-check": heat demand derived from hourly data should roughly match
+  the daily sums (about 5 % apart on the first live test).
 - "first buckets local time" for `1day`: shows whether days start at
   local midnight or UTC midnight.
 

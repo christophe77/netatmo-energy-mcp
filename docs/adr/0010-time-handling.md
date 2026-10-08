@@ -27,6 +27,16 @@ server may run in a different time zone from the home.
 - Implementation uses `Intl.DateTimeFormat` with no date library.
   DST edge cases (23- and 25-hour days) have dedicated tests.
 
+### Live observation (2026-10-08)
+
+- `real_time=true` gives bucket-start timestamps, and `real_time=false` shifts them
+  by half a step. Confirmed.
+- Sub-daily buckets start exactly at the requested `date_begin`, not at clock
+  boundaries. History queries therefore align `date_begin` to the step
+  themselves (in the home time zone for 3 h), and paging continues one step
+  after the last bucket.
+- `1day` buckets start at local midnight in the home time zone.
+
 ## Consequences
 
 - Answers match what the user sees on their thermostat and in the

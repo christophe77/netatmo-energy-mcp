@@ -34,8 +34,8 @@ function fakeNetatmo() {
     if (p === '/api/homesdata') return json(fixture('homesdata.json'));
     if (p === '/api/getroommeasure') {
       const step = 1800;
-      // Assumes buckets aligned to the scale (to be confirmed by live validation).
-      const begin = Math.ceil(Number(req.url.searchParams.get('date_begin')) / step) * step;
+      // Observed 2026-10-08: sub-daily buckets start exactly at date_begin.
+      const begin = Number(req.url.searchParams.get('date_begin'));
       const end = Number(req.url.searchParams.get('date_end'));
       const n = Math.min(1024, Math.floor((end - begin) / step) + 1);
       const value = Array.from({ length: n }, (_, i) => [19 + (i % 10) / 10, 20]);
