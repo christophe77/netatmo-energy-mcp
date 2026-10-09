@@ -18,6 +18,7 @@ decision is changed by writing a new ADR that supersedes the old one.
 | [0010](0010-time-handling.md)                     | Time handling                                   | Accepted                                    |
 | [0011](0011-future-snapshot-collector.md)         | Extension point for a future snapshot collector | Accepted (collector deferred)               |
 | [0012](0012-opt-in-write-mode.md)                 | Opt-in write mode with user confirmation        | Accepted                                    |
+| [0013](0013-remote-hosted-service.md)             | Remote access and a hosted multi-user service   | Proposed                                    |
 
 Template:
 
