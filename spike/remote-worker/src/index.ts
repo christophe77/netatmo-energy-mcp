@@ -104,11 +104,22 @@ const apiHandler = {
 
 const escape = (value: string) => value.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-function page(title: string, body: string, status = 200, headers = new Headers()): Response {
+/**
+ * `formTarget`: origin the consent form may end up at. Browsers apply CSP form-action to the
+ * redirect that follows a form POST, so the validated client redirect origin must be allowed,
+ * or the browser silently blocks the hand-back of the authorization code.
+ */
+function page(
+  title: string,
+  body: string,
+  status = 200,
+  headers = new Headers(),
+  formTarget?: string,
+): Response {
   headers.set('Content-Type', 'text/html; charset=utf-8');
   headers.set(
     'Content-Security-Policy',
-    "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'",
+    `default-src 'none'; style-src 'unsafe-inline'; form-action 'self'${formTarget ? ` ${formTarget}` : ''}; frame-ancestors 'none'`,
   );
   headers.set('X-Frame-Options', 'DENY');
   headers.set('Referrer-Policy', 'no-referrer');
@@ -160,6 +171,8 @@ async function authorize(request: Request, env: Env): Promise<Response> {
         consentPage(details, consent.handle),
         200,
         consent.headers,
+        // Validated by parseAuthRequest(): https, or http on loopback only.
+        new URL(authRequest.redirectUri).origin,
       );
     }
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });

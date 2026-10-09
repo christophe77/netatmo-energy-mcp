@@ -93,6 +93,13 @@ const html = await consent.text();
 const handle = /name="handle" value="([^"]+)"/.exec(html)?.[1];
 check(consent.status === 200 && Boolean(handle), 'consent page with a form handle');
 check(html.includes('localhost'), 'consent page shows the redirect host');
+// Browsers apply CSP form-action to the redirect after the POST: the client's origin must be allowed.
+const csp = consent.headers.get('content-security-policy') ?? '';
+check(
+  csp.includes(`form-action 'self' ${new URL(REDIRECT).origin}`),
+  'consent CSP lets the form redirect to the client',
+  csp,
+);
 
 const post = (fields) =>
   fetch(authUrl, {
