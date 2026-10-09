@@ -1,5 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/server';
-import type { ConfirmMode } from '../config/loader.js';
+import type { ConfirmMode } from '../domain/write-limits.js';
 import type { AnalyticsService } from '../domain/analytics-service.js';
 import type { ControlService } from '../domain/control-service.js';
 import type { EnergyService } from '../domain/energy-service.js';

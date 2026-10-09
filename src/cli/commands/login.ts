@@ -77,7 +77,7 @@ async function runLogin({ config, out, logger, argv }: CommandContext): Promise<
   // 2. Authorization request. Write access is opt-in (ADR-0012).
   const scopes: readonly string[] = values.write ? READ_WRITE_SCOPES : READ_ONLY_SCOPES;
   const state = createState();
-  const pkce = values['experimental-pkce'] ? createPkcePair() : undefined;
+  const pkce = values['experimental-pkce'] ? await createPkcePair() : undefined;
   const authorizeUrl = buildAuthorizeUrl({
     clientId,
     redirectUri: config.redirectUri,

@@ -1,6 +1,6 @@
 import type { McpServer, ToolAnnotations } from '@modelcontextprotocol/server';
 import * as z from 'zod';
-import type { ConfirmMode } from '../config/loader.js';
+import type { ConfirmMode } from '../domain/write-limits.js';
 import type { ControlService } from '../domain/control-service.js';
 import { DAYS } from '../domain/heating/schedule.js';
 import { homeRefSchema } from '../domain/views.js';
