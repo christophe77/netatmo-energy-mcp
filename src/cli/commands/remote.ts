@@ -7,6 +7,9 @@ import { isInteractive, promptHidden } from '../prompt.js';
 const USAGE = `netatmo-energy-mcp remote setup <url> [--write] [--manual] [--no-browser] [--client-id <id>] [--timeout <seconds>]
 netatmo-energy-mcp remote status <url>
 netatmo-energy-mcp remote invite <url>
+netatmo-energy-mcp remote accounts <url>
+netatmo-energy-mcp remote revoke <url> [--account <key>]
+netatmo-energy-mcp remote remove <url> --account <key>
 
 Links your own remote server (the Cloudflare Worker in remote/, see remote/README.md) to your
 Netatmo account, so assistants such as ChatGPT or Claude on the web and on mobile can use it.
@@ -17,6 +20,10 @@ Netatmo account, so assistants such as ChatGPT or Claude on the web and on mobil
   status  Shows whether the server is linked, its scopes and write mode.
   invite  Creates a single-use invite code (7 days) when the server runs with ONBOARDING=invite,
           so someone else can connect their own Netatmo account from the consent page.
+  accounts  Lists the accounts on the server and the assistants (connectors) connected to each.
+  revoke  Disconnects every assistant (or only those of --account): they must sign in again.
+          Do this after changing OWNER_PASSWORD or if a device or connector may be compromised.
+  remove  Disconnects the assistants of an onboarded account and erases its data.
 
   <url>   The server's address, e.g. https://netatmo-energy-mcp.<you>.workers.dev
 
@@ -43,7 +50,8 @@ interface RemoteStatus {
 async function runRemote(ctx: CommandContext): Promise<number> {
   const { out, argv } = ctx;
   const [sub, rawUrl, ...rest] = argv;
-  if ((sub !== 'setup' && sub !== 'status' && sub !== 'invite') || !rawUrl) {
+  const subs = ['setup', 'status', 'invite', 'accounts', 'revoke', 'remove'];
+  if (!sub || !subs.includes(sub) || !rawUrl) {
     out.error(USAGE);
     return 2;
   }
@@ -53,7 +61,15 @@ async function runRemote(ctx: CommandContext): Promise<number> {
     return 2;
   }
   const values = sub === 'setup' ? parseCommandArgs(rest, AUTHORIZE_OPTIONS).values : undefined;
-  if (sub !== 'setup' && rest.length > 0) {
+  const target =
+    sub === 'revoke' || sub === 'remove'
+      ? parseCommandArgs(rest, { account: { type: 'string' } }).values.account
+      : undefined;
+  if (sub === 'remove' && !target) {
+    out.error('remove needs --account <key> (see "remote accounts").');
+    return 2;
+  }
+  if (sub !== 'setup' && sub !== 'revoke' && sub !== 'remove' && rest.length > 0) {
     out.error(`Unexpected arguments: ${rest.join(' ')}`);
     return 2;
   }
@@ -68,6 +84,40 @@ async function runRemote(ctx: CommandContext): Promise<number> {
     if (sub === 'status') {
       printStatus(out, base, before);
       return before.linked ? 0 : 1;
+    }
+    if (sub === 'accounts') {
+      const { accounts } = await api.accounts();
+      for (const a of accounts) {
+        const state = !a.linked
+          ? 'not linked'
+          : a.revoked
+            ? 'revoked by Netatmo'
+            : a.writeMode
+              ? 'read + write'
+              : 'read-only';
+        out.line(`${a.account}  ${state}  ${a.connectors.length} connector(s)`);
+        for (const c of a.connectors) out.line(`    ${c.client_id}  since ${c.created_at}`);
+      }
+      return 0;
+    }
+    if (sub === 'revoke') {
+      const { revoked } = await api.post<{ revoked: number }>(
+        '/admin/revoke',
+        target ? { account: target } : {},
+      );
+      out.line(
+        `Revoked ${revoked} connector authorization(s). Those assistants must sign in again.`,
+      );
+      return 0;
+    }
+    if (sub === 'remove') {
+      const result = await api.post<{ removed: string; revoked: number }>('/admin/remove', {
+        account: target,
+      });
+      out.line(
+        `Removed account ${result.removed} and ${result.revoked} connector authorization(s).`,
+      );
+      return 0;
     }
     if (sub === 'invite') {
       const invite = await api.invite();
@@ -170,6 +220,20 @@ class AdminApi {
 
   invite(): Promise<{ code: string; expires_at: string }> {
     return this.call('POST', '/admin/invite', {});
+  }
+
+  accounts(): Promise<{
+    accounts: (RemoteStatus & {
+      account: string;
+      revoked?: boolean;
+      connectors: { client_id: string; created_at: string }[];
+    })[];
+  }> {
+    return this.call('GET', '/admin/accounts');
+  }
+
+  post<T>(path: string, body: unknown): Promise<T> {
+    return this.call('POST', path, body);
   }
 
   private async call<T = RemoteStatus>(method: string, path: string, body?: unknown): Promise<T> {

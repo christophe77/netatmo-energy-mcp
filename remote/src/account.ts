@@ -17,7 +17,7 @@ import { RateLimiter } from '../../src/netatmo/rate-limiter.js';
 import { WRITE_SCOPE } from '../../src/netatmo/write-endpoints.js';
 import { systemClock } from '../../src/utils/clock.js';
 import { createLogger, type Logger, type LogLevel } from '../../src/utils/logger.js';
-import { constantTimeEqual, randomToken, sha256Base64Url } from '../../src/utils/web-crypto.js';
+import { constantTimeEqual, randomToken } from '../../src/utils/web-crypto.js';
 import { confirmMode, writeLimits, type Env } from './env.js';
 import { netatmoFetch } from './netatmo-fetch.js';
 import { importDataKey, seal, unseal } from './seal.js';
@@ -40,22 +40,22 @@ export interface NetatmoLink {
 
 interface StoredLink extends NetatmoLink {
   linkedAt: number;
+  /** Netatmo refused the refresh token (revoked or expired). Kept so setup can be redone. */
+  revoked?: boolean;
 }
 
 export interface AccountStatus {
   linked: boolean;
+  revoked?: boolean;
   scopes: string[];
   writeMode: boolean;
   linkedAt?: string;
   tokenExpiresAt?: string;
 }
 
-export type SecretCheck = 'ok' | 'wrong' | 'locked';
-
 const LINK_KEY = 'netatmo-link';
 const REFRESH_MARGIN_MS = 5 * 60_000;
 const AUDIT_RETENTION_MS = 90 * 86_400_000;
-const LOCKOUT = { maxFailures: 5, durationMs: 15 * 60_000 };
 
 export class Account extends DurableObject<Env> {
   private dataKey?: Promise<CryptoKey>;
@@ -74,9 +74,12 @@ export class Account extends DurableObject<Env> {
   // ---------------------------------------------------------------- MCP endpoint
 
   override async fetch(request: Request): Promise<Response> {
-    const raw = request.headers.get(AUTH_HEADER);
-    if (!raw) return new Response('Forbidden', { status: 403 });
-    const auth = JSON.parse(raw) as AuthFacts;
+    let auth: AuthFacts;
+    try {
+      auth = JSON.parse(request.headers.get(AUTH_HEADER) ?? '') as AuthFacts;
+    } catch {
+      return new Response('Forbidden', { status: 403 });
+    }
     const headers = new Headers(request.headers);
     headers.delete(AUTH_HEADER);
     const handler = await this.mcpHandler();
@@ -140,30 +143,41 @@ export class Account extends DurableObject<Env> {
     },
   };
 
-  /** One refresh at a time: Netatmo may invalidate the previous refresh token immediately. */
+  /**
+   * One refresh at a time: Netatmo may invalidate the previous refresh token immediately.
+   * The result is only saved if the link was not replaced meanwhile (e.g. by setup).
+   */
   private refresh(link: StoredLink): Promise<TokenSet> {
     this.refreshing ??= (async () => {
+      const used = link.tokens.refreshToken;
       try {
         const { tokens } = await refreshAccessToken(
           {
             clientId: link.clientId,
             clientSecret: link.clientSecret,
-            refreshToken: link.tokens.refreshToken,
+            refreshToken: used,
             now: Date.now(),
           },
           { fetch: this.fetchFn },
         );
         // OAuth 2.0: a refresh response without `scope` keeps the scope originally granted.
         const next = tokens.scope.length > 0 ? tokens : { ...tokens, scope: link.tokens.scope };
-        await this.saveLink({ ...link, tokens: next });
+        const current = await this.loadLink();
+        if (!current || current.tokens.refreshToken !== used) {
+          // Replaced while refreshing (setup): keep the new link and use its tokens.
+          return (await this.requireLink()).tokens;
+        }
+        await this.saveLink({ ...current, tokens: next });
         return next;
       } catch (error) {
         if (error instanceof InvalidGrantError) {
-          await this.unlink();
-          throw new AuthRequiredError(
-            'Netatmo no longer accepts the stored authorization (revoked or expired).',
-            { hint: 'The owner runs "netatmo-energy-mcp remote setup <url>" again.' },
-          );
+          const current = await this.loadLink();
+          // Only the link whose token was refused is marked; a newer link is left alone.
+          if (current && current.tokens.refreshToken === used) {
+            await this.saveLink({ ...current, revoked: true });
+            this.handler = undefined;
+          }
+          throw revokedError();
         }
         throw error;
       } finally {
@@ -180,6 +194,7 @@ export class Account extends DurableObject<Env> {
         hint: 'The owner runs "netatmo-energy-mcp remote setup <url>".',
       });
     }
+    if (link.revoked) throw revokedError();
     return link;
   }
 
@@ -205,17 +220,13 @@ export class Account extends DurableObject<Env> {
     this.link = link;
   }
 
-  private async unlink(): Promise<void> {
-    await this.ctx.storage.delete(LINK_KEY);
-    this.link = null;
-    this.handler = undefined;
-  }
-
   // ---------------------------------------------------------------- RPC (Worker only)
 
   /** Link (or re-link) this account to a Netatmo app and tokens, then check they work. */
   async setup(input: NetatmoLink): Promise<AccountStatus & { homes: number }> {
     const link = validateLink(input);
+    // Let an in-flight refresh of the old link finish first; it will not overwrite the new one.
+    await this.refreshing?.catch(() => undefined);
     const previous = await this.loadLink();
     await this.saveLink({ ...link, linkedAt: Date.now() });
     this.handler = undefined;
@@ -228,9 +239,13 @@ export class Account extends DurableObject<Env> {
       const { body } = await client.homesData();
       return { ...(await this.status()), homes: body.homes?.length ?? 0 };
     } catch (error) {
-      // Keep the previous working link rather than a broken one.
-      if (previous) await this.saveLink(previous);
-      else await this.unlink();
+      // Keep the previous link rather than a broken one.
+      if (previous) {
+        await this.saveLink(previous);
+      } else {
+        await this.ctx.storage.delete(LINK_KEY);
+        this.link = null;
+      }
       this.handler = undefined;
       throw error;
     }
@@ -241,6 +256,7 @@ export class Account extends DurableObject<Env> {
     if (!link) return { linked: false, scopes: [], writeMode: false };
     return {
       linked: true,
+      ...(link.revoked && { revoked: true }),
       scopes: link.tokens.scope,
       writeMode: this.env.NETATMO_MCP_WRITE !== '0' && link.tokens.scope.includes(WRITE_SCOPE),
       linkedAt: new Date(link.linkedAt).toISOString(),
@@ -248,40 +264,22 @@ export class Account extends DurableObject<Env> {
     };
   }
 
-  /**
-   * Constant-time check of a secret (owner password or setup token), with a lockout after
-   * repeated failures so it cannot be brute-forced. `name` selects the secret.
-   */
-  async checkSecret(
-    name: 'OWNER_PASSWORD' | 'SETUP_TOKEN',
-    candidate: string,
-  ): Promise<SecretCheck> {
-    const stateKey = `lockout:${name}`;
-    const now = Date.now();
-    const state = (await this.ctx.storage.get<{ failures: number; until: number }>(stateKey)) ?? {
-      failures: 0,
-      until: 0,
-    };
-    if (state.until > now) return 'locked';
-    const expected = this.env[name];
-    // Hash both sides so the comparison is constant-time whatever the lengths.
-    const matches =
-      typeof expected === 'string' &&
-      expected.length >= 12 &&
-      constantTimeEqual(await sha256Base64Url(candidate), await sha256Base64Url(expected));
-    if (matches) {
-      await this.ctx.storage.delete(stateKey);
-      return 'ok';
-    }
-    const failures = state.failures + 1;
-    await this.ctx.storage.put(
-      stateKey,
-      failures >= LOCKOUT.maxFailures
-        ? { failures: 0, until: now + LOCKOUT.durationMs }
-        : { failures, until: 0 },
-    );
-    return 'wrong';
+  /** Deletes everything this account stored: Netatmo link, confirmations, change log. */
+  async erase(): Promise<void> {
+    await this.refreshing?.catch(() => undefined);
+    await this.ctx.storage.deleteAll();
+    this.link = null;
+    this.handler = undefined;
   }
+}
+
+function revokedError(): AuthRequiredError {
+  return new AuthRequiredError(
+    'Netatmo no longer accepts the stored authorization (revoked or expired).',
+    {
+      hint: 'Run "netatmo-energy-mcp remote setup <url>" again (owner), or reconnect the connector (onboarded account).',
+    },
+  );
 }
 
 // ------------------------------------------------------------------ helpers

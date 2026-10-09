@@ -26,7 +26,7 @@ const BASE = `http://localhost:${PORT}`;
 const SECRETS = {
   PUBLIC_URL: BASE,
   OWNER_PASSWORD: 'e2e-owner-password-not-secret',
-  SETUP_TOKEN: 'e2e-setup-token-not-secret',
+  SETUP_TOKEN: 'e2e-setup-token-not-secret-0123456789',
   DATA_KEY: Buffer.from(randomBytes(32)).toString('base64'),
   NETATMO_API_BASE: `http://127.0.0.1:${NETATMO_PORT}`,
   ONBOARDING: 'invite',
@@ -118,6 +118,8 @@ writeFileSync(
     .map(([k, v]) => `${k}=${v}`)
     .join('\n'),
 );
+// Fresh state on every run: a previous run's lockouts and accounts must not leak in.
+rmSync(path.join(REMOTE, '.wrangler', 'e2e-state'), { recursive: true, force: true });
 const wrangler = spawn(
   'npx',
   [
@@ -259,11 +261,42 @@ try {
     return { as, reg, verifier, redirect, post, prm, authUrl, cookies, handle, html: consentHtml };
   }
   const c1 = await connect();
+  // Forms without a valid consent session never reach the password check (security review M1).
+  let forged;
+  for (let i = 0; i < 6; i++) {
+    forged = await fetch(c1.authUrl, {
+      method: 'POST',
+      redirect: 'manual',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ handle: 'forged', decision: 'approve', password: 'x' }),
+    });
+  }
+  check(forged.status === 400, 'forged consent forms are refused before any password check');
+  const wrong = await c1.post('wrong-password-123');
+  const retryHtml = await wrong.text();
   check(
-    (await c1.post('wrong-password-123')).status === 403,
-    'consent refuses a wrong owner password',
+    wrong.status === 401 && retryHtml.includes('Wrong password.'),
+    'wrong owner password re-renders the consent page',
   );
-  const approved = await c1.post(SECRETS.OWNER_PASSWORD);
+  const retryHandle = /name="handle" value="([^"]+)"/.exec(retryHtml)?.[1];
+  const retryCookies = [
+    c1.cookies,
+    ...wrong.headers.getSetCookie().map((c) => c.split(';')[0]),
+  ].join('; ');
+  const approved = await fetch(c1.authUrl, {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', cookie: retryCookies },
+    body: new URLSearchParams({
+      handle: retryHandle,
+      decision: 'approve',
+      password: SECRETS.OWNER_PASSWORD,
+    }),
+  });
+  check(
+    approved.status === 302,
+    'owner approves with the right password (not locked by the forged forms)',
+  );
   const code = new URL(approved.headers.get('location')).searchParams.get('code');
   const tok = await (
     await fetch(c1.as.token_endpoint, {
@@ -409,7 +442,17 @@ try {
           invite: code,
         }),
       });
-    check((await onboard('not-a-real-invite')).status === 403, 'unknown invite code refused');
+    const badInvite = await onboard('not-a-real-invite');
+    const badHtml = await badInvite.text();
+    check(
+      badInvite.status === 401 && badHtml.includes('unknown, expired or already used'),
+      'unknown invite code refused, form shown again',
+    );
+    // Continue with the fresh consent session from the re-rendered page.
+    c2.handle = /name="handle" value="([^"]+)"/.exec(badHtml)?.[1];
+    c2.cookies = [c2.cookies, ...badInvite.headers.getSetCookie().map((c) => c.split(';')[0])].join(
+      '; ',
+    );
     const toNetatmo = await onboard(invite.code);
     const netatmoUrl = new URL(toNetatmo.headers.get('location') ?? 'http://x/');
     check(
@@ -470,6 +513,57 @@ try {
     const { tools: tools2 } = await second.listTools();
     check(tools2.length === 15, 'onboarded read-only account has the 15 read tools');
     await second.close();
+
+    // Accounts, revocation and removal (security review M2).
+    const { accounts } = await (await admin('/admin/accounts', SECRETS.SETUP_TOKEN)).json();
+    const onboardedKey = accounts.find((a) => a.account !== 'owner')?.account;
+    check(
+      accounts.length === 2 &&
+        /^u_/.test(onboardedKey ?? '') &&
+        accounts.every((a) => a.connectors.length >= 1),
+      'admin lists the owner and the onboarded account with their connectors',
+    );
+    check(
+      !JSON.stringify(accounts).includes('second-secret') &&
+        !JSON.stringify(accounts).includes('u2-access'),
+      'account list contains no secret',
+    );
+    const revoked = await (
+      await admin('/admin/revoke', SECRETS.SETUP_TOKEN, {
+        method: 'POST',
+        body: JSON.stringify({ account: onboardedKey }),
+      })
+    ).json();
+    const afterRevoke = await fetch(`${BASE}/mcp`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json, text/event-stream',
+        authorization: `Bearer ${tok2.access_token}`,
+      },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+    });
+    check(
+      revoked.revoked >= 1 && afterRevoke.status === 401,
+      'revoking an account cuts its connectors off immediately',
+    );
+    const ownerStill = await mcp('modern');
+    check(
+      (await call(ownerStill, 'netatmo_list_homes')).body.homes?.[0]?.name === 'Test Home',
+      'the owner is not affected',
+    );
+    await ownerStill.close();
+    const removed = await (
+      await admin('/admin/remove', SECRETS.SETUP_TOKEN, {
+        method: 'POST',
+        body: JSON.stringify({ account: onboardedKey }),
+      })
+    ).json();
+    const remaining = (await (await admin('/admin/accounts', SECRETS.SETUP_TOKEN)).json()).accounts;
+    check(
+      removed.removed === onboardedKey && remaining.length === 1,
+      'removing an account erases it',
+    );
     const ownerAgain = await mcp('modern');
     check(
       (await call(ownerAgain, 'netatmo_list_homes')).body.homes?.[0]?.name === 'Test Home',
@@ -489,16 +583,61 @@ try {
         invite: invite.code,
       }),
     });
-    check(reuse.status === 403, 'invite code is single-use');
+    check(
+      reuse.status === 401 && (await reuse.text()).includes('already used'),
+      'invite code is single-use',
+    );
   }
 
-  // ---------------------------------------------------------------- lockout
+  // ---------------------------------------------------------------- unverified clients (M3)
+  {
+    const as = await (await fetch(`${BASE}/.well-known/oauth-authorization-server`)).json();
+    const evil = await (
+      await fetch(as.registration_endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          client_name: 'ChatGPT',
+          redirect_uris: ['https://evil.example/cb'],
+          token_endpoint_auth_method: 'none',
+          grant_types: ['authorization_code'],
+          response_types: ['code'],
+        }),
+      })
+    ).json();
+    const url = new URL(as.authorization_endpoint);
+    Object.entries({
+      response_type: 'code',
+      client_id: evil.client_id,
+      redirect_uri: 'https://evil.example/cb',
+      scope: 'netatmo',
+      state: 'x',
+      code_challenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+      code_challenge_method: 'S256',
+    }).forEach(([k, v]) => url.searchParams.set(k, v));
+    const page = await fetch(url);
+    const html = await page.text();
+    check(
+      page.status === 403 &&
+        html.includes('cannot be approved') &&
+        !html.includes('name="password"'),
+      'self-registered client with a remote redirect cannot be approved',
+    );
+  }
+
+  // ---------------------------------------------------------------- lockout per client (M1)
+  const fromAttacker = { headers: { 'CF-Connecting-IP': '203.0.113.9' } };
   let last;
-  for (let i = 0; i < 6; i++) last = await admin('/admin/status', `wrong-token-${i}xxxxxx`);
-  check(last.status === 429, 'setup token locked after repeated failures');
+  for (let i = 0; i < 6; i++)
+    last = await admin('/admin/status', `wrong-token-${i}xxxxxx`, fromAttacker);
+  check(last.status === 429, 'setup token locked for a client after repeated failures');
   check(
-    (await admin('/admin/status', SECRETS.SETUP_TOKEN)).status === 429,
-    'even the right token waits out the lockout',
+    (await admin('/admin/status', SECRETS.SETUP_TOKEN, fromAttacker)).status === 429,
+    'that client waits out the lockout even with the right token',
+  );
+  check(
+    (await admin('/admin/status', SECRETS.SETUP_TOKEN)).status === 200,
+    'the owner elsewhere is not locked out',
   );
 
   console.log(`\nAll ${passed} checks passed.`);

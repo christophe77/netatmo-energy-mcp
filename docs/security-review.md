@@ -96,3 +96,34 @@ Accepted residual risks:
 - **Room names are matched loosely** (case, accents, then partial
   match). The preview always shows the resolved room before anything is
   applied.
+
+## Addendum: remote server review, 2026-10-09 (pre-v0.3)
+
+An independent adversarial review of the remote server (`remote/`,
+[ADR-0013](adr/0013-remote-hosted-service.md), [ADR-0014](adr/0014-remote-account-modes.md))
+found no critical or high issues. Cross-account isolation held: grant
+props cannot be changed by clients, sealed records are bound to their
+account, and the internal auth header cannot be injected from outside.
+Fixed before release, each covered by `remote/test/e2e.mjs`:
+
+| Severity | Finding                                                                                                                                      | Resolution                                                                                                                                                                                     |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Medium   | Anyone could lock the owner out: the password and setup-token lockouts were global, and the password was checked before the consent session. | Consent session and browser cookie are validated first; lockouts and rate limits are per client (hash of the connecting IP) in a `Guard` Durable Object. `SETUP_TOKEN` must be 32+ characters. |
+| Medium   | No way to revoke an assistant's access or remove an account; changing the password did not revoke grants.                                    | `remote accounts`, `remote revoke [--account]` and `remote remove --account` (admin endpoints using the library's grant API).                                                                  |
+| Medium   | A self-registered client named "ChatGPT" with its own redirect could phish a full owner grant.                                               | Only clients with a verified domain (Client ID Metadata Documents: ChatGPT, Claude) or a loopback redirect can be approved; `ALLOW_UNVERIFIED_CLIENTS=1` opts out.                             |
+| Low      | A token refresh racing with `remote setup` could overwrite or delete the new link.                                                           | The refresh result is saved only if the link was not replaced; setup waits for an in-flight refresh.                                                                                           |
+| Low      | A refused refresh token deleted the account's Netatmo link, including an onboarded user's app secret.                                        | The link is kept and marked revoked until set up again.                                                                                                                                        |
+| Low      | Invite codes were checked and deleted in KV, which is not atomic, and consumed before linking succeeded.                                     | Invites live in the `Guard` Durable Object (atomic), are consumed just before linking and restored if it fails.                                                                                |
+| Low      | Unauthenticated endpoints were not rate-limited.                                                                                             | Per-client limits on client registration, the consent page and the Netatmo callback; `MAX_ACCOUNTS` caps onboarding.                                                                           |
+| Info     | The same `DATA_KEY` bytes served as the AES key and as HKDF input.                                                                           | Separate keys derived with HKDF for sealing and account keys.                                                                                                                                  |
+| Info     | The e2e test reused state between runs.                                                                                                      | It starts from a clean state.                                                                                                                                                                  |
+
+Accepted residual risks:
+
+- **Stateless HTTP cannot carry 2025-era push confirmations.** The remote
+  default is `NETATMO_MCP_CONFIRM=token`; with `elicitation`, 2025-era
+  clients cannot confirm and changes are refused.
+- **The preview + token flow cannot prove a human agreed** (ADR-0012);
+  Claude adds its own per-tool approval, ChatGPT relies on the assistant.
+- **Confirmation tokens are per account, not per connector.** Another
+  assistant of the same account could use a token it learned.

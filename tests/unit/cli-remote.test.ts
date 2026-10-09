@@ -97,3 +97,51 @@ describe('remote invite', () => {
     expect(seen.map((s) => s.path)).toEqual(['/admin/status', '/admin/invite']);
   });
 });
+
+describe('remote accounts, revoke, remove', () => {
+  it('lists accounts with their connectors', async () => {
+    const url = await fakeRemote({
+      linked: true,
+      scopes: [],
+      writeMode: false,
+      accounts: [
+        {
+          account: 'owner',
+          linked: true,
+          writeMode: true,
+          scopes: [],
+          connectors: [
+            { client_id: 'https://claude.ai/x', created_at: '2026-10-09T00:00:00.000Z' },
+          ],
+        },
+      ],
+    });
+    const out = capture();
+    expect(await runCli(['remote', 'accounts', url], { NETATMO_MCP_SETUP_TOKEN: TOKEN }, out)).toBe(
+      0,
+    );
+    expect(out.lines.join('\n')).toContain('owner  read + write  1 connector(s)');
+  });
+
+  it('requires --account for remove', async () => {
+    const out = capture();
+    expect(
+      await runCli(
+        ['remote', 'remove', 'https://x.workers.dev'],
+        { NETATMO_MCP_SETUP_TOKEN: TOKEN },
+        out,
+      ),
+    ).toBe(2);
+    expect(out.errors.join('\n')).toContain('--account');
+  });
+
+  it('revokes connectors', async () => {
+    const url = await fakeRemote({ linked: true, scopes: [], writeMode: false, revoked: 3 });
+    const out = capture();
+    expect(await runCli(['remote', 'revoke', url], { NETATMO_MCP_SETUP_TOKEN: TOKEN }, out)).toBe(
+      0,
+    );
+    expect(out.lines.join('\n')).toContain('Revoked 3 connector authorization(s)');
+    expect(seen.map((s) => s.path)).toEqual(['/admin/status', '/admin/revoke']);
+  });
+});

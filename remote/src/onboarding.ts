@@ -6,7 +6,10 @@
  * finishUpstream() → code exchange → homesdata (Netatmo user ID) → account key → the account's
  * Durable Object stores the link → MCP authorization completed for that account only.
  */
-import { authorizationErrorRedirect } from '@cloudflare/workers-oauth-provider';
+import {
+  authorizationErrorRedirect,
+  type ApprovedConsent,
+} from '@cloudflare/workers-oauth-provider';
 import {
   buildAuthorizeUrl,
   exchangeAuthorizationCode,
@@ -19,7 +22,11 @@ import { randomToken, sha256Base64Url } from '../../src/utils/web-crypto.js';
 import type { Env } from './env.js';
 import { netatmoFetch } from './netatmo-fetch.js';
 import { escape, page } from './pages.js';
+import { guard } from './guard.js';
 import { accountKeyFor } from './seal.js';
+
+/** Account key of the pre-configured owner (ADR-0014 §2). */
+export const OWNER_ACCOUNT = 'owner';
 
 export type OnboardingMode = 'off' | 'invite' | 'open';
 
@@ -42,59 +49,54 @@ interface PendingOnboarding {
   inviteHash?: string;
 }
 
-const INVITE_TTL_S = 7 * 86_400;
-const inviteKey = (hash: string) => `invite:${hash}`;
+const INVITE_TTL_MS = 7 * 86_400_000;
+const DEFAULT_MAX_ACCOUNTS = 20;
 
 /** Single-use invite code for ONBOARDING=invite, valid 7 days. Only its hash is stored. */
 export async function createInvite(env: Env): Promise<{ code: string; expires_at: string }> {
   const code = randomToken(12);
-  await env.OAUTH_KV.put(inviteKey(await sha256Base64Url(code)), '1', {
-    expirationTtl: INVITE_TTL_S,
-  });
-  return { code, expires_at: new Date(Date.now() + INVITE_TTL_S * 1000).toISOString() };
+  await guard(env).addInvite(await sha256Base64Url(code), INVITE_TTL_MS);
+  return { code, expires_at: new Date(Date.now() + INVITE_TTL_MS).toISOString() };
 }
 
 const fail = (title: string, message: string, status = 400) =>
   page(title, `<h1>${escape(title)}</h1><p>${escape(message)}</p>`, status);
 
-/** POST /authorize with decision=onboard: approve consent, then go to Netatmo. */
+/**
+ * POST /authorize with decision=onboard, after the consent was approved: check the form, then
+ * go to Netatmo. The app credentials travel only inside the library's encrypted upstream record.
+ * A form error is returned as `{ error }` so the caller can show the consent page again.
+ */
 export async function startOnboarding(
-  request: Request,
   env: Env,
   form: FormData,
-  handle: string,
-  scope: string,
-): Promise<Response> {
+  approved: ApprovedConsent,
+): Promise<Response | { error: string }> {
   const mode = onboardingMode(env);
-  if (mode === 'off')
+  if (mode === 'off') {
     return fail('Not available', 'This server does not accept new accounts.', 403);
-
+  }
   const clientId = String(form.get('client_id') ?? '').trim();
   const clientSecret = String(form.get('client_secret') ?? '').trim();
-  if (!/^[\w.-]{8,128}$/.test(clientId) || !/^[\x21-\x7e]{8,256}$/.test(clientSecret)) {
-    return fail(
-      'Invalid app credentials',
-      'Copy the client ID and client secret of your Netatmo app exactly.',
-    );
+  // Printable ASCII without spaces: what Netatmo issues; anything else is a copy mistake.
+  if (!/^[\w.-]{8,128}$/.test(clientId) || !/^[!-~]{8,256}$/.test(clientSecret)) {
+    return { error: 'Copy the client ID and client secret of your Netatmo app exactly.' };
   }
   let inviteHash: string | undefined;
   if (mode === 'invite') {
     inviteHash = await sha256Base64Url(String(form.get('invite') ?? '').trim());
-    if (!(await env.OAUTH_KV.get(inviteKey(inviteHash)))) {
-      return fail('Invalid invite', 'This invite code is unknown, expired or already used.', 403);
+    if (!(await guard(env).hasInvite(inviteHash))) {
+      return { error: 'This invite code is unknown, expired or already used.' };
     }
   }
   const write = form.get('write') === 'on';
-
-  const oauth = env.OAUTH_PROVIDER;
-  const approved = await oauth.approveConsent(request, handle, { scope: [scope] });
   const pending: PendingOnboarding = {
     clientId,
     clientSecret,
     write,
     ...(inviteHash && { inviteHash }),
   };
-  const { state, headers } = await oauth.beginUpstream(approved.request, {
+  const { state, headers } = await env.OAUTH_PROVIDER.beginUpstream(approved.request, {
     data: pending,
     headers: approved.headers,
   });
@@ -132,10 +134,13 @@ export async function netatmoCallback(
     return new Response(null, { status: 302, headers });
   };
   const code = params.get('code');
-  if (params.get('error') || !code)
+  if (params.get('error') || !code) {
     return redirectWithError('Netatmo access was not granted.', 'access_denied');
+  }
 
   const fetchFn = netatmoFetch(env.NETATMO_API_BASE);
+  const g = guard(env);
+  let consumedInvite: number | undefined;
   try {
     const { tokens } = await exchangeAuthorizationCode(
       {
@@ -156,22 +161,31 @@ export async function netatmoCallback(
         handleRejectedToken: () => Promise.reject(new Error('Netatmo rejected the new token.')),
       },
     });
-    const userId = (await probe.homesData()).body.user as { id?: unknown } | undefined;
-    if (typeof userId?.id !== 'string' || userId.id === '') {
+    const user = (await probe.homesData()).body.user as { id?: unknown } | undefined;
+    if (typeof user?.id !== 'string' || user.id === '') {
       return redirectWithError('Netatmo did not identify the account.');
     }
-    if (data.inviteHash) {
-      const key = inviteKey(data.inviteHash);
-      if (!(await env.OAUTH_KV.get(key)))
-        return redirectWithError('The invite code was already used.', 'access_denied');
-      await env.OAUTH_KV.delete(key);
+    const account = await accountKeyFor(env.DATA_KEY, user.id);
+    const known = (await g.accounts()).some((a) => a.key === account);
+    if (!known) {
+      const max = Number(env.MAX_ACCOUNTS ?? DEFAULT_MAX_ACCOUNTS);
+      const onboarded = (await g.accounts()).filter((a) => a.key !== OWNER_ACCOUNT).length;
+      if (onboarded >= max) return redirectWithError('This server has no room for new accounts.');
     }
-    const account = await accountKeyFor(env.DATA_KEY, userId.id);
+    if (data.inviteHash) {
+      // Atomic: two flows can never both use one invite. Restored below if linking fails.
+      consumedInvite = await g.consumeInvite(data.inviteHash);
+      if (consumedInvite === undefined) {
+        return redirectWithError('The invite code was already used.', 'access_denied');
+      }
+    }
     await env.ACCOUNTS.get(env.ACCOUNTS.idFromName(account)).setup({
       clientId: data.clientId,
       clientSecret: data.clientSecret,
       tokens,
     });
+    consumedInvite = undefined;
+    await g.registerAccount(account);
     const { redirectTo } = await oauth.completeAuthorization({
       request: original,
       userId: account,
@@ -182,6 +196,9 @@ export async function netatmoCallback(
     headers.set('Location', redirectTo);
     return new Response(null, { status: 302, headers });
   } catch (error) {
+    if (data.inviteHash && consumedInvite !== undefined) {
+      await g.restoreInvite(data.inviteHash, consumedInvite);
+    }
     console.warn('Onboarding failed', error instanceof AppError ? error.code : 'unexpected');
     return redirectWithError(
       'Could not link the Netatmo account. Check the app credentials and its redirect URI.',

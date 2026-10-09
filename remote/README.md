@@ -28,8 +28,11 @@ and [ADR-0014](../docs/adr/0014-remote-account-modes.md).
 From the repository root:
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 ```
+
+(The Worker bundles the shared core from `../src`; the lockfile pins its
+dependencies.)
 
 ```bash
 cd remote
@@ -55,12 +58,12 @@ npx wrangler login
 3. Set the secrets. Wrangler prompts for each value, so it never lands
    in your shell history.
 
-   | Secret           | Value                                                              |
-   | ---------------- | ------------------------------------------------------------------ |
-   | `PUBLIC_URL`     | Your Worker URL from step 2, without a trailing slash              |
-   | `OWNER_PASSWORD` | A long password (12+ characters) for the consent page              |
-   | `SETUP_TOKEN`    | Another long random value (12+ characters), used by `remote setup` |
-   | `DATA_KEY`       | 32 random bytes in base64; see the command below                   |
+   | Secret           | Value                                                               |
+   | ---------------- | ------------------------------------------------------------------- |
+   | `PUBLIC_URL`     | Your Worker URL from step 2, without a trailing slash               |
+   | `OWNER_PASSWORD` | A long password (12+ characters) for the consent page               |
+   | `SETUP_TOKEN`    | A random value of 32+ characters, used by the `remote` CLI commands |
+   | `DATA_KEY`       | 32 random bytes in base64; see the command below                    |
 
    ```bash
    npx wrangler secret put PUBLIC_URL
@@ -68,6 +71,12 @@ npx wrangler login
 
    ```bash
    npx wrangler secret put OWNER_PASSWORD
+   ```
+
+   Generate the setup token and the data key with:
+
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
    ```
 
    ```bash
@@ -106,16 +115,23 @@ Connector URL: `https://netatmo-energy-mcp.<you>.workers.dev/mcp`
 On the consent page, check the client name and destination domain, enter
 your owner password, and allow.
 
+Only apps with a verified domain (ChatGPT, Claude) or apps on your own
+computer can be approved. A self-registered app could otherwise pretend to
+be ChatGPT to phish your owner password. To allow other MCP clients that
+register themselves, set `ALLOW_UNVERIFIED_CLIENTS` to `1`.
+
 ## Options
 
 Set in `wrangler.jsonc` under `vars` (then deploy again):
 
-| Variable                                                                         | Default       | Meaning                                                                                                                                                           |
-| -------------------------------------------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ONBOARDING`                                                                     | `off`         | `invite`: other people can connect their own Netatmo account with an invite code (`netatmo-energy-mcp remote invite <url>`). `open`: anyone can; not recommended. |
-| `NETATMO_MCP_WRITE`                                                              | follows setup | `0` forces read-only mode.                                                                                                                                        |
-| `NETATMO_MCP_CONFIRM`                                                            | `token`       | `token`: the assistant shows a preview and asks you. `elicitation`: only a confirmation dialog from the client. `auto`: either.                                   |
-| `NETATMO_MCP_MIN_TEMP`, `NETATMO_MCP_MAX_TEMP`, `NETATMO_MCP_MAX_SETPOINT_HOURS` | 7, 28, 24     | Write limits.                                                                                                                                                     |
+| Variable                                                                         | Default       | Meaning                                                                                                                                                                                                                                          |
+| -------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ONBOARDING`                                                                     | `off`         | `invite`: other people can connect their own Netatmo account with an invite code (`netatmo-energy-mcp remote invite <url>`). `open`: anyone can; not recommended.                                                                                |
+| `NETATMO_MCP_WRITE`                                                              | follows setup | `0` forces read-only mode.                                                                                                                                                                                                                       |
+| `NETATMO_MCP_CONFIRM`                                                            | `token`       | `token`: the assistant shows a preview and asks you. `elicitation`: only a confirmation dialog from the client (2026-07-28 protocol clients only; 2025-era clients cannot be asked over stateless HTTP, so changes are refused). `auto`: either. |
+| `MAX_ACCOUNTS`                                                                   | `20`          | Maximum number of onboarded accounts.                                                                                                                                                                                                            |
+| `ALLOW_UNVERIFIED_CLIENTS`                                                       | unset         | `1` allows self-registered MCP clients with a remote redirect to be approved.                                                                                                                                                                    |
+| `NETATMO_MCP_MIN_TEMP`, `NETATMO_MCP_MAX_TEMP`, `NETATMO_MCP_MAX_SETPOINT_HOURS` | 7, 28, 24     | Write limits.                                                                                                                                                                                                                                    |
 
 With onboarding enabled, each person creates their own free Netatmo app
 with redirect URI `https://netatmo-energy-mcp.<you>.workers.dev/netatmo/callback`,
@@ -130,11 +146,19 @@ npx netatmo-energy-mcp remote status https://netatmo-energy-mcp.<you>.workers.de
 
 - **Logs**: Cloudflare dashboard → Workers → netatmo-energy-mcp →
   Observability. Secrets and tokens are never logged.
-- **Revoke an assistant**: remove the connector in the assistant. To
-  revoke every assistant at once, delete the `OAUTH_KV` entries or create a
-  new namespace.
-- **Lockout**: 5 wrong passwords or setup tokens lock that secret for
-  15 minutes.
+- **Accounts and connected assistants**: `remote accounts <url>`.
+- **Revoke access**: `remote revoke <url>` disconnects every assistant
+  (`--account <key>` for one account). They must sign in again. Do this
+  after changing `OWNER_PASSWORD`, which does not revoke existing access by
+  itself, or if a device may be compromised.
+- **Remove an onboarded account**: `remote remove <url> --account <key>`
+  revokes its assistants and erases its data.
+- **Lockout**: 5 wrong passwords or setup tokens from the same client lock
+  that client for 15 minutes; other clients are not affected. Requests to
+  the consent page, client registration and the Netatmo callback are also
+  rate-limited per client.
+- **Connector lifetime**: assistants keep access for up to 30 days without
+  signing in again, unless revoked.
 - **Update**: `git pull`, `pnpm install` at the root, then `npx wrangler
 deploy` here.
 

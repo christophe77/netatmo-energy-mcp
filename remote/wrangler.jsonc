@@ -12,15 +12,28 @@
     // npx wrangler kv namespace create OAUTH_KV, then paste the id here.
     { "binding": "OAUTH_KV", "id": "REPLACE_WITH_KV_NAMESPACE_ID" },
   ],
-  "durable_objects": { "bindings": [{ "name": "ACCOUNTS", "class_name": "Account" }] },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Account"] }],
+  "durable_objects": {
+    "bindings": [
+      { "name": "ACCOUNTS", "class_name": "Account" },
+      { "name": "GUARD", "class_name": "Guard" },
+    ],
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Account"] },
+    { "tag": "v2", "new_sqlite_classes": ["Guard"] },
+  ],
   "vars": { "ONBOARDING": "off" },
   "env": {
     // Local end-to-end tests against a fake Netatmo on localhost (see test/e2e.mjs).
     "e2e": {
       "compatibility_flags": ["nodejs_compat"],
       "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "e2e-local" }],
-      "durable_objects": { "bindings": [{ "name": "ACCOUNTS", "class_name": "Account" }] },
+      "durable_objects": {
+        "bindings": [
+          { "name": "ACCOUNTS", "class_name": "Account" },
+          { "name": "GUARD", "class_name": "Guard" },
+        ],
+      },
       "vars": { "ONBOARDING": "off" },
     },
   },

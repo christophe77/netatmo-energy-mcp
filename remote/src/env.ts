@@ -5,24 +5,33 @@ import {
   type WriteLimits,
 } from '../../src/domain/write-limits.js';
 import type { Account } from './account.js';
+import type { Guard } from './guard.js';
 
 /** Bindings, variables and secrets of the remote server (see remote/README.md). */
 export interface Env {
   OAUTH_KV: KVNamespace;
   ACCOUNTS: DurableObjectNamespace<Account>;
+  GUARD: DurableObjectNamespace<Guard>;
   OAUTH_PROVIDER: OAuthHelpers;
 
   /** Public https origin of this Worker, e.g. https://netatmo-energy-mcp.<account>.workers.dev */
   PUBLIC_URL: string;
   /** Owner sign-in on the consent page (secret, 12+ characters). */
   OWNER_PASSWORD?: string;
-  /** Authenticates `netatmo-energy-mcp remote setup` (secret, 12+ characters). */
+  /** Authenticates `netatmo-energy-mcp remote setup` (secret, 32+ characters). */
   SETUP_TOKEN?: string;
   /** 32 random bytes, base64: encrypts Netatmo secrets at rest (secret). */
   DATA_KEY?: string;
 
   /** off | invite | open (ADR-0014 §1). Default off: owner only. */
   ONBOARDING?: string;
+  /** Maximum number of onboarded accounts (default 20). */
+  MAX_ACCOUNTS?: string;
+  /**
+   * "1" lets self-registered (DCR) clients with a non-loopback redirect be approved. Off by
+   * default: only clients with a verified domain (ChatGPT, Claude) or local apps can be approved.
+   */
+  ALLOW_UNVERIFIED_CLIENTS?: string;
   NETATMO_MCP_WRITE?: string;
   NETATMO_MCP_CONFIRM?: string;
   NETATMO_MCP_MIN_TEMP?: string;

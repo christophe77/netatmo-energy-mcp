@@ -37,6 +37,8 @@ export interface ConsentOptions {
   onboarding: 'off' | 'invite' | 'open';
   /** Redirect URI an onboarding user registers in their Netatmo app. */
   callbackUrl: string;
+  /** Shown above the forms, e.g. after a wrong password. */
+  error?: string;
 }
 
 export function consentPage(d: ConsentDescription, handle: string, opts: ConsentOptions): string {
@@ -67,6 +69,7 @@ ${opts.onboarding === 'invite' ? '<label>Invite code<input name="invite" autocom
 <p>${origin} Access will be sent to <strong>${escape(d.redirectHost)}</strong>.</p>
 ${d.redirectIsLoopback ? '<p class="warn"><strong>This sends access to an app on your computer.</strong> Continue only if you just started signing in from it.</p>' : ''}
 <p>The assistant will be able to read heating data, and to change it only if write access was granted (each change still needs confirmation).</p>
+${opts.error ? `<p class="warn">${escape(opts.error)}</p>` : ''}
 <h2>Owner</h2>
 ${owner}
 ${onboarding}`;
