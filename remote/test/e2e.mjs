@@ -136,6 +136,8 @@ const wrangler = spawn(
   {
     cwd: REMOTE,
     shell: process.platform === 'win32',
+    // Own process group on POSIX, so cleanup can stop npx, wrangler and workerd together.
+    detached: process.platform !== 'win32',
     stdio: ['ignore', 'pipe', 'pipe'],
   },
 );
@@ -147,7 +149,13 @@ async function cleanup() {
   fake.close();
   rmSync(devVars, { force: true });
   if (process.platform === 'win32') spawn('taskkill', ['/pid', String(wrangler.pid), '/T', '/F']);
-  else wrangler.kill();
+  else {
+    try {
+      process.kill(-wrangler.pid, 'SIGTERM');
+    } catch {
+      wrangler.kill('SIGTERM');
+    }
+  }
 }
 
 try {
@@ -647,4 +655,8 @@ try {
   process.exitCode = 1;
 } finally {
   await cleanup();
+  // Child pipes may linger briefly after the emulator is stopped; do not wait on them.
+  setTimeout(() => process.exit(process.exitCode ?? 0), 500).unref();
+  wrangler.stdout.destroy();
+  wrangler.stderr.destroy();
 }
