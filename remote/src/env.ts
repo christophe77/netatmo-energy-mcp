@@ -85,3 +85,10 @@ export function confirmMode(env: Env): ConfirmMode {
   }
   return mode;
 }
+
+/** PUBLIC_URL without trailing slashes (a loop: no regex backtracking on odd input). */
+export function publicOrigin(env: Env): string {
+  let url = env.PUBLIC_URL;
+  while (url.endsWith('/')) url = url.slice(0, -1);
+  return url;
+}

@@ -11,6 +11,7 @@ export function netatmoFetch(base: string | undefined): FetchFn {
   }
   return (input, init) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-    return fetch(url.replace(/^https:\/\/api\.netatmo\.com/, base), init);
+    // Anchored on the path separator, so api.netatmo.com.example is never rewritten.
+    return fetch(url.replace(/^https:\/\/api\.netatmo\.com(?=\/)/, base), init);
   };
 }

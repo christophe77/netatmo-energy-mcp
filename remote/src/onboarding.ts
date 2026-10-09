@@ -19,7 +19,7 @@ import {
 import { AppError } from '../../src/errors.js';
 import { NetatmoClient } from '../../src/netatmo/client.js';
 import { randomToken, sha256Base64Url } from '../../src/utils/web-crypto.js';
-import type { Env } from './env.js';
+import { publicOrigin, type Env } from './env.js';
 import { netatmoFetch } from './netatmo-fetch.js';
 import { escape, page } from './pages.js';
 import { guard } from './guard.js';
@@ -38,8 +38,7 @@ export function onboardingMode(env: Env): OnboardingMode {
   return mode;
 }
 
-export const callbackUrl = (env: Env): string =>
-  `${env.PUBLIC_URL.replace(/\/+$/, '')}/netatmo/callback`;
+export const callbackUrl = (env: Env): string => `${publicOrigin(env)}/netatmo/callback`;
 
 /** What beginUpstream() keeps (encrypted by the library) until Netatmo calls back. */
 interface PendingOnboarding {

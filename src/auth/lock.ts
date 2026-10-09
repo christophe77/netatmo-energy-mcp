@@ -32,30 +32,51 @@ async function readOrUndefined(file: string): Promise<string | undefined> {
   }
 }
 
+/** A breaker lock older than this was abandoned by a crashed process. */
+const BREAKER_STALE_MS = 10_000;
+
 /**
- * Break a stale lock without racing another breaker: move it aside atomically, then check that
- * what was moved is still the stale lock we inspected. If a fresh lock was moved by mistake,
- * put it back with link(), which fails rather than overwrite a lock created in the meantime.
+ * Break a stale lock without racing other breakers. Breakers first take a separate, exclusive
+ * breaker lock; under it they check again that the lock file is still the stale one they
+ * inspected, and only then remove it. Without this, two breakers could each move aside a lock
+ * the other had just taken, letting two processes in at once.
  */
-async function breakStaleLock(lockPath: string, staleContent: string): Promise<void> {
-  const aside = `${lockPath}.${randomBytes(6).toString('hex')}.stale`;
+async function breakStaleLock(
+  lockPath: string,
+  staleContent: string,
+  staleMs: number,
+  clock: Clock,
+): Promise<void> {
+  const breaker = `${lockPath}.break`;
   try {
-    await fs.rename(lockPath, aside);
+    const handle = await fs.open(
+      breaker,
+      fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY,
+      0o600,
+    );
+    await handle.close();
   } catch (error) {
-    // Gone already, or another process is breaking it at this moment.
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT' || isContended(error)) return;
-    throw error;
-  }
-  const moved = await readOrUndefined(aside);
-  if (moved !== staleContent) {
+    if (!isContended(error)) throw error;
+    // Another process is breaking it now. Clean up a breaker left behind by a crash.
     try {
-      await fs.link(aside, lockPath);
+      const stat = await fs.stat(breaker);
+      if (clock.now() - stat.mtimeMs > BREAKER_STALE_MS) await fs.rm(breaker, { force: true });
     } catch {
-      // Another process already holds a newer lock; the moved one is lost to its owner,
-      // whose release() tolerates a missing lock.
+      // Gone or busy: the other breaker is finishing.
     }
+    return;
   }
-  await fs.rm(aside, { force: true });
+  try {
+    if ((await readOrUndefined(lockPath)) !== staleContent) return;
+    const stat = await fs.stat(lockPath).catch(() => undefined);
+    if (!stat || clock.now() - stat.mtimeMs <= staleMs) return;
+    await fs.rm(lockPath, { force: true });
+  } catch (error) {
+    // Windows: the file is being read or deleted by another process; try again later.
+    if (!isContended(error)) throw error;
+  } finally {
+    await fs.rm(breaker, { force: true }).catch(() => undefined);
+  }
 }
 
 /**
@@ -107,7 +128,7 @@ export async function acquireFileLock(
       const content = await readOrUndefined(lockPath);
       const stat = await fs.stat(lockPath);
       if (content !== undefined && clock.now() - stat.mtimeMs > staleMs) {
-        await breakStaleLock(lockPath, content);
+        await breakStaleLock(lockPath, content, staleMs, clock);
         continue;
       }
     } catch (error) {

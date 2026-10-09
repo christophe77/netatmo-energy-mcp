@@ -18,7 +18,7 @@ import {
 import { AppError } from '../../src/errors.js';
 import { VERSION } from '../../src/version.js';
 import { Account, AUTH_HEADER, type AuthFacts, type NetatmoLink } from './account.js';
-import type { Env } from './env.js';
+import { publicOrigin, type Env } from './env.js';
 import { clientKey, guard, Guard } from './guard.js';
 import {
   callbackUrl,
@@ -315,7 +315,7 @@ function getProvider(env: Env): OAuthProvider<Env> {
   if (!/^(https:\/\/|http:\/\/localhost(:\d+)?$)/.test(env.PUBLIC_URL ?? '')) {
     throw new Error('PUBLIC_URL must be set to the https origin of this Worker.');
   }
-  const origin = env.PUBLIC_URL.replace(/\/+$/, '');
+  const origin = publicOrigin(env);
   provider ??= new OAuthProvider<Env>({
     apiRoute: '/mcp',
     apiHandler,
