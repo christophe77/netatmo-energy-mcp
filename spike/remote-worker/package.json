@@ -1,0 +1,21 @@
+{
+  "name": "netatmo-mcp-remote-spike",
+  "private": true,
+  "type": "module",
+  "description": "ADR-0013 spike: remote MCP endpoint with OAuth on Cloudflare Workers. No Netatmo data.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "1.2.3",
+    "@modelcontextprotocol/server": "2.3.1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260924.1",
+    "typescript": "6.0.3",
+    "wrangler": "4.139.0"
+  }
+}
