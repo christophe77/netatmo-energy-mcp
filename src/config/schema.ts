@@ -25,6 +25,8 @@ export const envSchema = z.object({
   /** '0' forces read-only operation even with a write-capable token (ADR-0012). */
   NETATMO_MCP_WRITE: optionalString.pipe(z.enum(['0', '1']).optional()),
   /** 'elicitation': client dialog only; 'token': preview + token only (see ConfirmMode). */
+  /** CLI only: authenticates `remote setup|status` against the remote server (ADR-0014). */
+  NETATMO_MCP_SETUP_TOKEN: optionalString,
   NETATMO_MCP_CONFIRM: optionalString.pipe(z.enum(['auto', 'elicitation', 'token']).optional()),
   NETATMO_MCP_MIN_TEMP: optionalNumber(5, 30),
   NETATMO_MCP_MAX_TEMP: optionalNumber(5, 30),

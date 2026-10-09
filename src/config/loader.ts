@@ -22,6 +22,8 @@ export interface AppConfig {
   /** How changes are confirmed: 'auto' (elicitation, else a preview token) or 'elicitation' only. */
   confirm: ConfirmMode;
   limits: WriteLimits;
+  /** Remote server SETUP_TOKEN for `remote setup|status` (never printed). */
+  setupToken?: string;
 }
 
 // Runtime-neutral types, shared with the remote server (ADR-0014).
@@ -48,6 +50,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     write: e.NETATMO_MCP_WRITE === '0' ? 'off' : 'auto',
     confirm: e.NETATMO_MCP_CONFIRM ?? 'auto',
     limits: writeLimits(e),
+    ...(e.NETATMO_MCP_SETUP_TOKEN !== undefined && { setupToken: e.NETATMO_MCP_SETUP_TOKEN }),
   };
 }
 
