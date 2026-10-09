@@ -1,7 +1,7 @@
 import { AppError, NetatmoUnavailableError } from '../errors.js';
 import { WRITE_SCOPE } from '../netatmo/write-endpoints.js';
 import { USER_AGENT } from '../version.js';
-import type { TokenSet } from './credential-store.js';
+import type { TokenSet } from './token-set.js';
 import { constantTimeEqual, randomToken, sha256Base64Url } from '../utils/web-crypto.js';
 
 export const AUTHORIZE_URL = 'https://api.netatmo.com/oauth2/authorize';

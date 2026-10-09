@@ -11,6 +11,12 @@ export function base64UrlEncode(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+export function base64UrlDecode(text: string): Uint8Array {
+  const b64 = text.replace(/-/g, '+').replace(/_/g, '/');
+  const binary = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4));
+  return Uint8Array.from(binary, (c) => c.charCodeAt(0));
+}
+
 /** `bytes` cryptographically random bytes, base64url-encoded. */
 export function randomToken(bytes: number): string {
   return base64UrlEncode(crypto.getRandomValues(new Uint8Array(bytes)));

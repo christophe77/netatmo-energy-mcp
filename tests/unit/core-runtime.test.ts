@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
  */
 const SRC = path.join(import.meta.dirname, '..', '..', 'src');
 const CORE_DIRS = ['analytics', 'domain', 'mcp', 'netatmo', 'utils'];
-const CORE_FILES = ['errors.ts', 'version.ts', 'auth/oauth.ts'];
+const CORE_FILES = ['errors.ts', 'version.ts', 'auth/oauth.ts', 'auth/token-set.ts'];
 /** Node-only parts of src/: the CLI, the local shell, file storage, config and process entry. */
 const NODE_ONLY = [
   'cli/',

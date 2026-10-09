@@ -93,13 +93,13 @@ The Netatmo client, domain, analytics and MCP tool registration become a
 **runtime-neutral core**: no `node:fs`, `node:os`, `child_process` or
 `process` access. Platform-specific pieces are injected:
 
-| Seam                | Local (stdio, Node)   | Remote (Worker)                               |
-| ------------------- | --------------------- | --------------------------------------------- |
-| Token provider      | File store, file lock | Account Durable Object                        |
-| Audit log           | `changes.log` file    | Durable Object storage, 90-day retention      |
-| Confirmation tokens | In memory             | Sealed (AES-GCM) + single-use nonce in the DO |
-| Logger output       | stderr                | `console` (Workers Logs), same redaction      |
-| Clock, `fetch`      | Node                  | Workers                                       |
+| Seam                | Local (stdio, Node)   | Remote (Worker)                            |
+| ------------------- | --------------------- | ------------------------------------------ |
+| Token provider      | File store, file lock | Account Durable Object                     |
+| Audit log           | `changes.log` file    | Durable Object storage, 90-day retention   |
+| Confirmation tokens | In memory             | Durable Object storage (single-use, 5 min) |
+| Logger output       | stderr                | `console` (Workers Logs), same redaction   |
+| Clock, `fetch`      | Node                  | Workers                                    |
 
 The remote shell lives in `remote/`, a separate package deployed with
 Wrangler. It imports the core from `src/` (bundled), so the tools are
@@ -108,7 +108,10 @@ identical in both shells. The npm package stays the local server plus the
 
 ### 6. Confirmations
 
-Same rules as ADR-0012, with sealed tokens (ADR-0013 §4).
+Same rules as ADR-0012. Because every MCP request of an account is served by
+that account's Durable Object, confirmation tokens are stored there
+(single-use, 5 minutes) instead of being sealed into the token as ADR-0013
+§4 anticipated: simpler, and revocable.
 `NETATMO_MCP_CONFIRM` becomes a per-account setting, default `token` for
 remote accounts: ChatGPT shows no MCP confirmation dialog, and Claude
 already asks for per-tool approval on its side.
@@ -121,7 +124,7 @@ already asks for per-tool approval on its side.
 | P2    | `remote/` Worker: OAuth provider, owner sign-in, `createMcpHandler` serving the real tools, account Durable Object | Read tools work against a fake Netatmo in the Workers test runtime |
 | P3    | `remote setup` / `remote status` CLI and `/admin/setup`                                                            | Owner can link their home and use it from ChatGPT and Claude       |
 | P4    | Onboarding (`ONBOARDING=invite\|open`), Netatmo callback, account key                                              | Second account onboarded and isolated from the owner's (tested)    |
-| P5    | Sealed confirmation tokens, write tools remote, audit log in the DO                                                | ADR-0012 test suite passes against the remote shell                |
+| P5    | Write tools remote: confirmations and audit log in the DO                                                          | ADR-0012 behaviour verified end to end remotely                    |
 | P6    | Deploy guide, e2e against the emulator, independent security review, release 0.3.0                                 | Review findings fixed; live validation on the maintainer's home    |
 
 ## Consequences

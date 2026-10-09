@@ -1,0 +1,27 @@
+{
+  // Remote Netatmo Energy MCP server. Setup: see README.md.
+  "name": "netatmo-energy-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-24",
+  // nodejs_compat: the MCP SDK; global_fetch_strictly_public: safe Client ID Metadata Document fetches.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  "kv_namespaces": [
+    // npx wrangler kv namespace create OAUTH_KV, then paste the id here.
+    { "binding": "OAUTH_KV", "id": "REPLACE_WITH_KV_NAMESPACE_ID" },
+  ],
+  "durable_objects": { "bindings": [{ "name": "ACCOUNTS", "class_name": "Account" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Account"] }],
+  "vars": { "ONBOARDING": "off" },
+  "env": {
+    // Local end-to-end tests against a fake Netatmo on localhost (see test/e2e.mjs).
+    "e2e": {
+      "compatibility_flags": ["nodejs_compat"],
+      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "e2e-local" }],
+      "durable_objects": { "bindings": [{ "name": "ACCOUNTS", "class_name": "Account" }] },
+      "vars": { "ONBOARDING": "off" },
+    },
+  },
+}
