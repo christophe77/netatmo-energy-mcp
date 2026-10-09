@@ -4,7 +4,8 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist/', 'coverage/', 'node_modules/'] },
+  // spike/ has its own toolchain (Cloudflare Workers) and tsconfig.
+  { ignores: ['dist/', 'coverage/', 'node_modules/', 'spike/'] },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   {

@@ -1,0 +1,12 @@
+{
+  // ADR-0013 spike. Deploy to your own Cloudflare account; see README.md.
+  "name": "netatmo-mcp-spike",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-24",
+  // global_fetch_strictly_public: required to fetch Client ID Metadata Documents safely.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "kv_namespaces": [
+    // Create with: npx wrangler kv namespace create OAUTH_KV, then paste the id here.
+    { "binding": "OAUTH_KV", "id": "REPLACE_WITH_KV_NAMESPACE_ID" },
+  ],
+}

@@ -12,3 +12,7 @@ credentials.json
 # Probe output (may contain unsanitized data with --raw)
 probe/
 responses*.json
+
+# Cloudflare Workers (spike)
+.wrangler/
+.dev.vars
