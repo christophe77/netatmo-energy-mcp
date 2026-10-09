@@ -39,7 +39,12 @@ Il fonctionne aussi dans Windsurf / Devin Desktop, Zed, Roo Code, Kilo
 Code, JetBrains AI Assistant, Kiro et Warp. Voir
 [tous les clients compatibles](#assistants-ia-et-clients-mcp-compatibles).
 
-> **État : première version (0.2.0).** L'intégration de l'API Netatmo a été
+**ChatGPT et Claude sur le web et sur mobile** n'acceptent que des
+serveurs distants. Pour eux, déployez le
+[serveur distant](#web-et-mobile-serveur-distant) optionnel sur votre
+propre compte Cloudflare (offre gratuite).
+
+> **État : première version (0.3.0).** L'intégration de l'API Netatmo a été
 > validée sur une installation réelle ; retours et rapports de compatibilité
 > bienvenus.
 
@@ -295,6 +300,31 @@ planning et choisir un planning avec le mode « planning » utilisent des
 paramètres Netatmo non documentés : ils sont marqués expérimentaux.
 Détails (en anglais) : [docs/configuration.md](docs/configuration.md#write-mode).
 
+## Web et mobile (serveur distant)
+
+Le serveur local est l'option la plus simple et la plus privée. Pour
+piloter votre chauffage depuis ChatGPT ou Claude sur le web et sur votre
+téléphone, déployez les mêmes outils comme **serveur distant sur votre
+propre compte Cloudflare** (offre gratuite) :
+[remote/README.md](remote/README.md) (en anglais).
+
+- **Mêmes outils, mêmes garde-fous.** Lecture seule par défaut ; mode
+  écriture avec aperçu, confirmation et les mêmes limites.
+- **Vos secrets restent chez vous.** Les identifiants de votre application
+  Netatmo et les jetons sont chiffrés dans votre compte Cloudflare.
+- **Les assistants se connectent en OAuth.** Vous approuvez chacun sur une
+  page de consentement avec votre mot de passe propriétaire, et pouvez le
+  révoquer.
+- **Une commande pour relier votre logement :**
+  `npx netatmo-energy-mcp remote setup <adresse-du-worker>`.
+- **En option :** permettre à vos proches de connecter leur propre compte
+  Netatmo avec un code d'invitation (`ONBOARDING=invite`). Chaque compte
+  ne voit que son logement.
+
+La connexion a été validée avec ChatGPT (ordinateur et mobile) et Claude
+(web, ordinateur et mobile). Conception (en anglais) : [ADR-0013](docs/adr/0013-remote-hosted-service.md),
+[ADR-0014](docs/adr/0014-remote-account-modes.md).
+
 ## Équipements compatibles
 
 | Équipement                                 | Type Netatmo  | État                                                                         |
@@ -330,10 +360,11 @@ l'utiliser, avec le modèle de son choix.
 La configuration de chaque client, vérifiée dans sa documentation
 officielle : [examples/](examples/README.md) (en anglais).
 
-**Non compatibles :** les assistants qui n'acceptent que des serveurs MCP
-_distants_ (applications et connecteurs ChatGPT, Claude.ai sur le web,
-Mistral Le Chat). Ce serveur est local par conception : vos identifiants
-ne quittent jamais votre machine.
+**Assistants web et mobiles** (applications et connecteurs ChatGPT,
+Claude.ai et les applications mobiles Claude et ChatGPT) : ils n'acceptent
+que des serveurs MCP _distants_. Utilisez pour eux le
+[serveur distant](#web-et-mobile-serveur-distant). Mistral Le Chat n'a pas
+été testé.
 
 **Tests.** Le serveur est testé avec le client officiel du SDK MCP et le
 MCP Inspector. La qualité des appels d'outils avec de petits modèles
@@ -425,8 +456,9 @@ Elles viennent de l'API Netatmo Energy ; détails dans
 | Version   | Objectif                                             |
 | --------- | ---------------------------------------------------- |
 | v0.1      | Serveur MCP en lecture seule                         |
-| v0.2      | Plannings, pilotage optionnel (version actuelle)     |
-| v0.3      | Diagnostics plus riches                              |
+| v0.2      | Plannings, pilotage optionnel                        |
+| v0.3      | Serveur distant pour le web et le mobile (actuelle)  |
+| v0.3.x    | Diagnostics plus riches                              |
 | v0.4      | Contexte météo (Open-Meteo)                          |
 | v0.5–v0.7 | Modélisation thermique, prévisions, jumeau numérique |
 | v1.0      | Une interface stable                                 |

@@ -53,8 +53,11 @@ describe('buildAuthorizeUrl', () => {
     expect(url.toString()).not.toMatch(/write_/);
   });
 
-  it('adds an S256 challenge only when asked', () => {
-    const pkce = createPkcePair();
+  it('adds an S256 challenge only when asked', async () => {
+    const pkce = await createPkcePair();
+    // The Web Crypto challenge must equal the S256 transform computed by node:crypto.
+    const { createHash } = await import('node:crypto');
+    expect(pkce.challenge).toBe(createHash('sha256').update(pkce.verifier).digest('base64url'));
     const url = new URL(
       buildAuthorizeUrl({
         clientId: 'c',

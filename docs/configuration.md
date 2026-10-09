@@ -13,6 +13,7 @@
 | `status`                                                                       | Show login state, token expiry, scope and write mode (no secrets)             |
 | `doctor`                                                                       | Check Node.js, folder permissions, credentials, token refresh and API access  |
 | `probe [--days n] [--out dir] [--raw] [--refresh-test] [--rotation-test]`      | Record sanitized API responses for compatibility reports                      |
+| `remote setup                                                                  | status                                                                        | invite <url>` | Link and check your [remote server](../remote/README.md) (web and mobile assistants) |
 
 `<command> --help` shows details.
 

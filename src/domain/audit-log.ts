@@ -1,6 +1,4 @@
-import fs from 'node:fs/promises';
-import type { Logger } from '../utils/logger.js';
-
+/** One heating change attempted through the MCP server (ADR-0012). */
 export interface AuditEntry {
   time: string;
   action: string;
@@ -11,21 +9,10 @@ export interface AuditEntry {
 }
 
 /**
- * Local, append-only log of heating changes made through the MCP server (ADR-0012).
- * One JSON object per line in `<config folder>/changes.log`, owner-only permissions.
- * Logging failures never fail the operation (the change has already been applied).
+ * Append-only record of heating changes. The local server writes `changes.log` in the
+ * configuration folder; the remote server keeps it in the account's Durable Object (ADR-0014).
+ * Implementations must never fail the operation: the change has already been sent.
  */
-export class AuditLog {
-  constructor(
-    private readonly file: string,
-    private readonly logger: Logger,
-  ) {}
-
-  async record(entry: AuditEntry): Promise<void> {
-    try {
-      await fs.appendFile(this.file, `${JSON.stringify(entry)}\n`, { mode: 0o600 });
-    } catch (error) {
-      this.logger.warn('Could not write the change log', { error });
-    }
-  }
+export interface AuditLog {
+  record(entry: AuditEntry): Promise<void>;
 }

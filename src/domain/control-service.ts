@@ -6,7 +6,7 @@
  * plan's `apply()` performs the single Netatmo write and records it in the local change log.
  * The MCP layer only calls `apply()` after the user has confirmed.
  */
-import type { WriteLimits } from '../config/loader.js';
+import type { WriteLimits } from '../domain/write-limits.js';
 import { AppError, InvalidArgumentError } from '../errors.js';
 import type { NetatmoClient } from '../netatmo/client.js';
 import type { WriteEndpoint } from '../netatmo/write-endpoints.js';

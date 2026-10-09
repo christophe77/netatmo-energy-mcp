@@ -5,15 +5,9 @@ import type { CredentialStore, StoredCredentials, TokenSet } from './credential-
 import { InvalidGrantError, refreshAccessToken, type FetchFn } from './oauth.js';
 
 /** What the Netatmo API client needs from authentication. */
-export interface TokenProvider {
-  /** A currently valid access token, refreshing first if needed. */
-  getAccessToken(signal?: AbortSignal): Promise<string>;
-  /**
-   * Called when the API rejected `rejectedToken` as invalid or expired.
-   * Returns a different, fresh token, or throws AuthRequiredError.
-   */
-  handleRejectedToken(rejectedToken: string, signal?: AbortSignal): Promise<string>;
-}
+import type { TokenProvider } from './token-set.js';
+
+export type { TokenProvider };
 
 export interface ClientCredentials {
   clientId: string;

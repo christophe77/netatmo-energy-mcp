@@ -1,4 +1,4 @@
-import type { TokenProvider } from '../auth/token-manager.js';
+import type { TokenProvider } from '../auth/token-set.js';
 import type { FetchFn } from '../auth/oauth.js';
 import type { AppError } from '../errors.js';
 import {

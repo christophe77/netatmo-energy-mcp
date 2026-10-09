@@ -7,6 +7,37 @@ minor versions may contain breaking changes; they are always listed.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-09
+
+Remote server for ChatGPT and Claude on the web and on mobile. The local
+server is unchanged for existing users.
+
+### Added
+
+- **Remote server for ChatGPT and Claude on the web and on mobile**
+  (`remote/`, [ADR-0013](docs/adr/0013-remote-hosted-service.md),
+  [ADR-0014](docs/adr/0014-remote-account-modes.md)). It is a Cloudflare
+  Worker you deploy to your own account, serving the same tools as the
+  local server.
+  - OAuth 2.1 for assistants: Client ID Metadata Documents, dynamic client
+    registration, PKCE, and a consent page with an owner password.
+  - One Durable Object per account: Netatmo credentials encrypted with
+    AES-GCM, serialized token refresh, durable confirmations and change
+    log, lockout after repeated wrong secrets.
+  - Optional onboarding (`ONBOARDING=invite|open`): other people connect
+    their own Netatmo app. Each account is isolated.
+- CLI: `remote setup <url> [--write]`, `remote status <url>` and
+  `remote invite <url>`.
+- CI job for the Worker: typecheck, end-to-end test against the Workers
+  emulator and a fake Netatmo, dependency audit.
+
+### Changed
+
+- The core (Netatmo client, domain, analytics, MCP tools) is
+  runtime-neutral, with Web Crypto instead of `node:crypto`, so the local
+  server and the Worker share it. A test enforces this. No behavior change
+  for the local server.
+
 ## [0.2.0] - 2026-10-08
 
 Schedules and opt-in heating control. Read-only remains the default:
@@ -123,6 +154,7 @@ First public version: a read-only MCP server for Netatmo Energy.
 - Tested on Netatmo Smart Thermostat (`NATherm1`), Smart Radiator Valves
   (`NRV`) and Relay (`NAPlug`). OpenTherm devices are untested.
 
-[Unreleased]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/christophe77/netatmo-energy-mcp/releases/tag/v0.1.0

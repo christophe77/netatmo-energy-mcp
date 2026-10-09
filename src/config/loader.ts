@@ -1,6 +1,11 @@
 import type { LogLevel } from '../utils/logger.js';
 import { configPaths, resolveConfigDir, type ConfigPaths } from './paths.js';
-import { DEFAULT_REDIRECT_URI, DEFAULT_WRITE_LIMITS, envSchema } from './schema.js';
+import {
+  DEFAULT_WRITE_LIMITS,
+  type ConfirmMode,
+  type WriteLimits,
+} from '../domain/write-limits.js';
+import { DEFAULT_REDIRECT_URI, envSchema } from './schema.js';
 
 export class ConfigError extends Error {
   override name = 'ConfigError';
@@ -17,21 +22,12 @@ export interface AppConfig {
   /** How changes are confirmed: 'auto' (elicitation, else a preview token) or 'elicitation' only. */
   confirm: ConfirmMode;
   limits: WriteLimits;
+  /** Remote server SETUP_TOKEN for `remote setup|status` (never printed). */
+  setupToken?: string;
 }
 
-/**
- * How changes are confirmed: 'auto' (the client's dialog when it has one, else preview + token),
- * 'elicitation' (the client's dialog only), 'token' (preview + token only, for clients that
- * advertise elicitation without showing it).
- */
-export type ConfirmMode = 'auto' | 'elicitation' | 'token';
-
-export interface WriteLimits {
-  minTemp: number;
-  maxTemp: number;
-  maxSetpointHours: number;
-  defaultSetpointHours: number;
-}
+// Runtime-neutral types, shared with the remote server (ADR-0014).
+export type { ConfirmMode, WriteLimits } from '../domain/write-limits.js';
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = envSchema.safeParse(env);
@@ -54,6 +50,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     write: e.NETATMO_MCP_WRITE === '0' ? 'off' : 'auto',
     confirm: e.NETATMO_MCP_CONFIRM ?? 'auto',
     limits: writeLimits(e),
+    ...(e.NETATMO_MCP_SETUP_TOKEN !== undefined && { setupToken: e.NETATMO_MCP_SETUP_TOKEN }),
   };
 }
 

@@ -26,6 +26,7 @@ const COMMANDS: Record<string, () => Promise<Command>> = {
   doctor: async () => (await import('./commands/doctor.js')).doctorCommand,
   probe: async () => (await import('./commands/probe.js')).probeCommand,
   serve: async () => (await import('./commands/serve.js')).serveCommand,
+  remote: async () => (await import('./commands/remote.js')).remoteCommand,
 };
 
 const SUMMARIES: Record<string, string> = {

@@ -38,7 +38,12 @@ It also works in Windsurf / Devin Desktop, Zed, Roo Code, Kilo Code,
 JetBrains AI Assistant, Kiro and Warp. See
 [all compatible clients](#compatible-ai-assistants-and-mcp-clients).
 
-> **Status: early release (0.2.0).** The Netatmo API integration has been
+**ChatGPT and Claude on the web and on mobile** only accept remote
+servers. For them, deploy the optional
+[remote server](#web-and-mobile-remote-server) to your own Cloudflare
+account (free plan).
+
+> **Status: early release (0.3.0).** The Netatmo API integration has been
 > validated on a real installation; feedback and device reports are welcome.
 
 ## Why this project?
@@ -282,6 +287,29 @@ schedule with home mode "schedule" use undocumented Netatmo parameters,
 so they are marked experimental. Details:
 [docs/configuration.md](docs/configuration.md#write-mode).
 
+## Web and mobile (remote server)
+
+The local server is the simplest and most private option. To use your
+heating from ChatGPT or Claude on the web and on your phone, deploy the
+same tools as a **remote server on your own Cloudflare account** (free
+plan): [remote/README.md](remote/README.md).
+
+- **Same tools and safeguards.** Read-only by default; write mode with
+  previews, confirmations and the same limits.
+- **Your secrets stay in your account.** Your Netatmo app credentials and
+  tokens are encrypted at rest in your Cloudflare account.
+- **Assistants sign in with OAuth.** You approve each one on a consent
+  page with your owner password, and you can revoke it.
+- **One command to link your home:**
+  `npx netatmo-energy-mcp remote setup <your-worker-url>`.
+- **Optional:** let family or friends connect their own Netatmo account
+  with an invite code (`ONBOARDING=invite`). Each account only sees its
+  own home.
+
+The sign-in flow was validated with ChatGPT (desktop and mobile) and
+Claude (web, desktop and mobile). Design: [ADR-0013](docs/adr/0013-remote-hosted-service.md),
+[ADR-0014](docs/adr/0014-remote-account-modes.md).
+
 ## Supported devices
 
 | Device                                    | Netatmo type  | Status                                                           |
@@ -317,10 +345,10 @@ whatever model that client runs.
 Configuration for each client, checked against official documentation:
 [examples/](examples/README.md).
 
-**Not compatible:** assistants that only accept _remote_ MCP servers
-(ChatGPT apps/connectors, Claude.ai on the web, Mistral Le Chat). This
-server runs locally by design, so your credentials never leave your
-machine.
+**Web and mobile assistants** (ChatGPT apps and connectors, Claude.ai and
+the Claude and ChatGPT mobile apps) only accept _remote_ MCP servers. Use
+the [remote server](#web-and-mobile-remote-server) for them. Mistral Le
+Chat has not been tested.
 
 **Testing.** The server is tested with the official MCP SDK client and
 the MCP Inspector. Tool-calling quality with small local models varies
@@ -406,8 +434,9 @@ These come from the Netatmo Energy API; details are in
 | Version   | Focus                                        |
 | --------- | -------------------------------------------- |
 | v0.1      | Read-only MCP server                         |
-| v0.2      | Schedules, opt-in heating control (current)  |
-| v0.3      | Richer diagnostics                           |
+| v0.2      | Schedules, opt-in heating control            |
+| v0.3      | Remote server for web and mobile (current)   |
+| v0.3.x    | Richer diagnostics                           |
 | v0.4      | Weather context (Open-Meteo)                 |
 | v0.5–v0.7 | Thermal modelling, predictions, digital twin |
 | v1.0      | A stable interface                           |

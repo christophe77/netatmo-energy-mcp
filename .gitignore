@@ -15,4 +15,4 @@ responses*.json
 
 # Cloudflare Workers (spike)
 .wrangler/
-.dev.vars
+.dev.vars*

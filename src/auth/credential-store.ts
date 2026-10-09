@@ -6,6 +6,7 @@ import { systemClock, type Clock } from '../utils/clock.js';
 import type { Logger } from '../utils/logger.js';
 import { acquireFileLock, LockTimeoutError } from './lock.js';
 import { ensureSecureDir, readFileIfExists, writeFileAtomic } from './secure-fs.js';
+import type { TokenSet as NeutralTokenSet } from './token-set.js';
 
 const tokenSetSchema = z.object({
   accessToken: z.string().min(1),
@@ -19,7 +20,8 @@ const tokenSetSchema = z.object({
   clientId: z.string().min(1),
 });
 
-export type TokenSet = z.infer<typeof tokenSetSchema>;
+// The schema must keep matching the runtime-neutral TokenSet shared with the remote server.
+export type TokenSet = z.infer<typeof tokenSetSchema> & NeutralTokenSet;
 
 const credentialsSchema = z.object({
   version: z.literal(1),

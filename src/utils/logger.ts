@@ -74,7 +74,13 @@ export interface LoggerOptions {
 
 export function createLogger(options: LoggerOptions = {}): Logger {
   const threshold = RANK[options.level ?? 'info'];
-  const write = options.write ?? ((line: string) => process.stderr.write(`${line}\n`));
+  // console.error writes to stderr in Node.js and to Workers Logs on Cloudflare (ADR-0014).
+  const write =
+    options.write ??
+    ((line: string) => {
+      // eslint-disable-next-line no-console -- the one place logs leave the process
+      console.error(line);
+    });
   const now = options.now ?? (() => new Date());
 
   const log = (level: Exclude<LogLevel, 'silent'>, message: string, meta?: LogMeta) => {

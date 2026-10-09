@@ -1,8 +1,8 @@
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { AppError, NetatmoUnavailableError } from '../errors.js';
 import { WRITE_SCOPE } from '../netatmo/write-endpoints.js';
 import { USER_AGENT } from '../version.js';
-import type { TokenSet } from './credential-store.js';
+import type { TokenSet } from './token-set.js';
+import { constantTimeEqual, randomToken, sha256Base64Url } from '../utils/web-crypto.js';
 
 export const AUTHORIZE_URL = 'https://api.netatmo.com/oauth2/authorize';
 export const TOKEN_URL = 'https://api.netatmo.com/oauth2/token';
@@ -33,15 +33,12 @@ export class InvalidGrantError extends OAuthError {
 }
 
 export function createState(): string {
-  return randomBytes(32).toString('base64url');
+  return randomToken(32);
 }
 
 /** Constant-time comparison of OAuth `state` values. */
 export function statesMatch(expected: string, received: string | null | undefined): boolean {
-  if (typeof received !== 'string') return false;
-  const a = Buffer.from(expected, 'utf8');
-  const b = Buffer.from(received, 'utf8');
-  return a.length === b.length && timingSafeEqual(a, b);
+  return typeof received === 'string' && constantTimeEqual(expected, received);
 }
 
 export interface PkcePair {
@@ -50,10 +47,9 @@ export interface PkcePair {
 }
 
 /** RFC 7636 S256 pair. Netatmo does not document PKCE; only used with --experimental-pkce. */
-export function createPkcePair(): PkcePair {
-  const verifier = randomBytes(32).toString('base64url');
-  const challenge = createHash('sha256').update(verifier).digest('base64url');
-  return { verifier, challenge };
+export async function createPkcePair(): Promise<PkcePair> {
+  const verifier = randomToken(32);
+  return { verifier, challenge: await sha256Base64Url(verifier) };
 }
 
 export interface AuthorizeUrlParams {
