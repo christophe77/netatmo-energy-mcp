@@ -44,7 +44,7 @@ serveurs distants. Pour eux, déployez le
 [serveur distant](#web-et-mobile-serveur-distant) optionnel sur votre
 propre compte Cloudflare (offre gratuite).
 
-> **État : première version (0.2.0).** L'intégration de l'API Netatmo a été
+> **État : première version (0.3.0).** L'intégration de l'API Netatmo a été
 > validée sur une installation réelle ; retours et rapports de compatibilité
 > bienvenus.
 
@@ -456,8 +456,8 @@ Elles viennent de l'API Netatmo Energy ; détails dans
 | Version   | Objectif                                             |
 | --------- | ---------------------------------------------------- |
 | v0.1      | Serveur MCP en lecture seule                         |
-| v0.2      | Plannings, pilotage optionnel (version actuelle)     |
-| v0.3      | Serveur distant pour le web et le mobile (prochaine) |
+| v0.2      | Plannings, pilotage optionnel                        |
+| v0.3      | Serveur distant pour le web et le mobile (actuelle)  |
 | v0.3.x    | Diagnostics plus riches                              |
 | v0.4      | Contexte météo (Open-Meteo)                          |
 | v0.5–v0.7 | Modélisation thermique, prévisions, jumeau numérique |

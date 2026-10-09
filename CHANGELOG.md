@@ -7,6 +7,11 @@ minor versions may contain breaking changes; they are always listed.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-09
+
+Remote server for ChatGPT and Claude on the web and on mobile. The local
+server is unchanged for existing users.
+
 ### Added
 
 - **Remote server for ChatGPT and Claude on the web and on mobile**
@@ -149,6 +154,7 @@ First public version: a read-only MCP server for Netatmo Energy.
 - Tested on Netatmo Smart Thermostat (`NATherm1`), Smart Radiator Valves
   (`NRV`) and Relay (`NAPlug`). OpenTherm devices are untested.
 
-[Unreleased]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/christophe77/netatmo-energy-mcp/releases/tag/v0.1.0

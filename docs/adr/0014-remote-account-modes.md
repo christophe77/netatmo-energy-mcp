@@ -137,6 +137,6 @@ already asks for per-tool approval on its side.
 - `/admin/setup` is a new attack surface. It is protected by a
   high-entropy secret, rate-limited, and only ever writes the owner
   account.
-- **To verify in P3:** whether Netatmo keeps two active grants for the
-  same user and app (local `login` and `remote setup`). If not, `remote
-setup` must warn that the local server will need `login` again.
+- **Verified (2026-10-09):** Netatmo keeps two active grants for the same
+  user and app. After `remote setup`, the local server kept working and
+  refreshed its own token normally.

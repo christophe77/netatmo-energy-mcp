@@ -43,7 +43,7 @@ servers. For them, deploy the optional
 [remote server](#web-and-mobile-remote-server) to your own Cloudflare
 account (free plan).
 
-> **Status: early release (0.2.0).** The Netatmo API integration has been
+> **Status: early release (0.3.0).** The Netatmo API integration has been
 > validated on a real installation; feedback and device reports are welcome.
 
 ## Why this project?
@@ -434,8 +434,8 @@ These come from the Netatmo Energy API; details are in
 | Version   | Focus                                        |
 | --------- | -------------------------------------------- |
 | v0.1      | Read-only MCP server                         |
-| v0.2      | Schedules, opt-in heating control (current)  |
-| v0.3      | Remote server for web and mobile (next)      |
+| v0.2      | Schedules, opt-in heating control            |
+| v0.3      | Remote server for web and mobile (current)   |
 | v0.3.x    | Richer diagnostics                           |
 | v0.4      | Weather context (Open-Meteo)                 |
 | v0.5–v0.7 | Thermal modelling, predictions, digital twin |
