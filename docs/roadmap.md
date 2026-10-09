@@ -28,7 +28,16 @@ Released. See [ADR-0012](adr/0012-opt-in-write-mode.md).
 - Every change previewed and confirmed by the user (MCP elicitation, or a single-use confirmation token)
 - Configurable temperature and duration limits, a local audit log, no automatic retries of writes
 
-## v0.3: Historical analytics and richer diagnostics
+## v0.3: Remote server for web and mobile assistants
+
+See [ADR-0013](adr/0013-remote-hosted-service.md) and [ADR-0014](adr/0014-remote-account-modes.md).
+
+- Self-hosted Cloudflare Worker serving the same tools to ChatGPT and Claude on the web and on mobile
+- OAuth 2.1 for assistants, owner sign-in, encrypted Netatmo credentials per account
+- Owner setup from the CLI (`remote setup`); optional onboarding with invite codes
+- Later (0.4): the maintainer's hosted beta on the same code, with a privacy policy and account deletion
+
+## v0.3.x: Historical analytics and richer diagnostics
 
 - Heating cycle detection from boiler activity (cycle count, average length)
 - Warm-up and cool-down rates per room (°C/h), with the uncertainty stated
