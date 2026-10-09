@@ -7,7 +7,7 @@ is only marked done here once it has been seen live.
 | Directory                                                                         | Status               | Method                                               | Requirements                                                                         |
 | --------------------------------------------------------------------------------- | -------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | npm                                                                               | ✅ Published (0.2.0) | `npm publish`, then [staged releases](releasing.md)  | —                                                                                    |
-| [Official MCP Registry](https://registry.modelcontextprotocol.io)                 | To do                | `mcp-publisher` CLI                                  | `mcpName` in package.json (done), `server.json` (done), npm package published (done) |
+| [Official MCP Registry](https://registry.modelcontextprotocol.io)                 | ✅ Published (0.2.0) | `mcp-publisher` CLI                                  | `mcpName` in package.json (done), `server.json` (done), npm package published (done) |
 | [Glama](https://glama.ai/mcp/servers)                                             | To do                | "Add Server" on the site; claim with `glama.json`    | The server must start in Glama's Docker-based check                                  |
 | [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers)   | To do, after Glama   | Pull request to README → _Home Automation_           | A passing Glama listing and its score badge (PRs without it are closed)              |
 | [mcpservers.org](https://mcpservers.org/submit) (feeds wong2/awesome-mcp-servers) | To do                | Web form (free tier, ~2-week review)                 | —                                                                                    |
@@ -23,9 +23,13 @@ Prerequisites, all done: `package.json` has
 package with that field is published, and `server.json` is at the
 repository root. Package validation keeps the name and version in sync.
 
+First published on 2026-10-08 (0.2.0).
+
 1. Install `mcp-publisher`. Download the binary for your OS from
    <https://github.com/modelcontextprotocol/registry/releases> (on macOS,
-   `brew install mcp-publisher` also works).
+   `brew install mcp-publisher` also works). On Windows, extract
+   `mcp-publisher_windows_amd64.tar.gz` with `tar -xzf` and run
+   `mcp-publisher.exe` by its full path.
 2. Authenticate with GitHub. This proves ownership of the
    `io.github.christophe77/*` namespace:
    ```bash
