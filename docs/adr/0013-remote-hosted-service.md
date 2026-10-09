@@ -1,6 +1,6 @@
 # ADR-0013: Remote access and a hosted multi-user service
 
-Status: Proposed
+Status: Accepted (2026-10-09)
 Date: 2026-10-09
 
 ## Context
