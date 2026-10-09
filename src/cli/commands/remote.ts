@@ -6,6 +6,7 @@ import { isInteractive, promptHidden } from '../prompt.js';
 
 const USAGE = `netatmo-energy-mcp remote setup <url> [--write] [--manual] [--no-browser] [--client-id <id>] [--timeout <seconds>]
 netatmo-energy-mcp remote status <url>
+netatmo-energy-mcp remote invite <url>
 
 Links your own remote server (the Cloudflare Worker in remote/, see remote/README.md) to your
 Netatmo account, so assistants such as ChatGPT or Claude on the web and on mobile can use it.
@@ -14,6 +15,8 @@ Netatmo account, so assistants such as ChatGPT or Claude on the web and on mobil
           write access), then sends the app credentials and the new tokens to the server over
           HTTPS. They are encrypted there. Nothing is saved on this computer.
   status  Shows whether the server is linked, its scopes and write mode.
+  invite  Creates a single-use invite code (7 days) when the server runs with ONBOARDING=invite,
+          so someone else can connect their own Netatmo account from the consent page.
 
   <url>   The server's address, e.g. https://netatmo-energy-mcp.<you>.workers.dev
 
@@ -40,7 +43,7 @@ interface RemoteStatus {
 async function runRemote(ctx: CommandContext): Promise<number> {
   const { out, argv } = ctx;
   const [sub, rawUrl, ...rest] = argv;
-  if ((sub !== 'setup' && sub !== 'status') || !rawUrl) {
+  if ((sub !== 'setup' && sub !== 'status' && sub !== 'invite') || !rawUrl) {
     out.error(USAGE);
     return 2;
   }
@@ -50,7 +53,7 @@ async function runRemote(ctx: CommandContext): Promise<number> {
     return 2;
   }
   const values = sub === 'setup' ? parseCommandArgs(rest, AUTHORIZE_OPTIONS).values : undefined;
-  if (sub === 'status' && rest.length > 0) {
+  if (sub !== 'setup' && rest.length > 0) {
     out.error(`Unexpected arguments: ${rest.join(' ')}`);
     return 2;
   }
@@ -65,6 +68,15 @@ async function runRemote(ctx: CommandContext): Promise<number> {
     if (sub === 'status') {
       printStatus(out, base, before);
       return before.linked ? 0 : 1;
+    }
+    if (sub === 'invite') {
+      const invite = await api.invite();
+      out.line(`Invite code: ${invite.code}`);
+      out.line(
+        `Valid once, until ${invite.expires_at}. Share it privately; whoever uses it can link`,
+      );
+      out.line('their own Netatmo account to this server from the connector consent page.');
+      return 0;
     }
 
     out.line(`Server: ${base} (version ${before.version ?? 'unknown'})`);
@@ -156,7 +168,11 @@ class AdminApi {
     return this.call('POST', '/admin/setup', link);
   }
 
-  private async call(method: string, path: string, body?: unknown): Promise<RemoteStatus> {
+  invite(): Promise<{ code: string; expires_at: string }> {
+    return this.call('POST', '/admin/invite', {});
+  }
+
+  private async call<T = RemoteStatus>(method: string, path: string, body?: unknown): Promise<T> {
     let res: Response;
     try {
       res = await fetch(`${this.base}${path}`, {
@@ -177,7 +193,16 @@ class AdminApi {
       });
     }
     const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-    if (res.ok) return json as unknown as RemoteStatus;
+    if (res.ok) return json as unknown as T;
+    if (res.status === 409) {
+      throw new RemoteError(
+        'UNSUPPORTED_CAPABILITY',
+        'Invites need ONBOARDING=invite on the server.',
+        {
+          hint: 'Set it in remote/wrangler.jsonc ("vars") and deploy again.',
+        },
+      );
+    }
     if (res.status === 401) {
       throw new RemoteError('AUTH_REQUIRED', 'The server refused the setup token.', {
         hint: 'Use the SETUP_TOKEN secret set on the server (npx wrangler secret put SETUP_TOKEN).',

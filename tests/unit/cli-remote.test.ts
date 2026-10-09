@@ -85,3 +85,15 @@ describe('remote', () => {
     expect(await runCli(['remote', 'frobnicate'], {}, capture())).toBe(2);
   });
 });
+
+describe('remote invite', () => {
+  it('prints a new invite code', async () => {
+    const url = await fakeRemote({ code: 'abc123XYZ', expires_at: '2026-10-16T00:00:00.000Z' });
+    const out = capture();
+    expect(await runCli(['remote', 'invite', url], { NETATMO_MCP_SETUP_TOKEN: TOKEN }, out)).toBe(
+      0,
+    );
+    expect(out.lines.join('\n')).toContain('Invite code: abc123XYZ');
+    expect(seen.map((s) => s.path)).toEqual(['/admin/status', '/admin/invite']);
+  });
+});

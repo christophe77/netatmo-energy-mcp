@@ -35,3 +35,31 @@ export async function unseal<T>(key: CryptoKey, sealed: string, boundTo: string)
   );
   return JSON.parse(new TextDecoder().decode(plaintext)) as T;
 }
+
+/**
+ * Stable, opaque account key for an onboarded Netatmo user (ADR-0014 §3): HMAC-SHA256 of the
+ * Netatmo user ID under a key derived from DATA_KEY (HKDF), so the raw ID is never stored and
+ * the AES key is not reused for another purpose.
+ */
+export async function accountKeyFor(
+  secret: string | undefined,
+  netatmoUserId: string,
+): Promise<string> {
+  const raw = secret ? base64UrlDecode(secret.trim()) : new Uint8Array();
+  if (raw.length !== 32) throw new Error('DATA_KEY must be 32 random bytes.');
+  const ikm = await crypto.subtle.importKey('raw', raw, 'HKDF', false, ['deriveKey']);
+  const hmacKey = await crypto.subtle.deriveKey(
+    {
+      name: 'HKDF',
+      hash: 'SHA-256',
+      salt: new Uint8Array(),
+      info: encoder.encode('netatmo-energy-mcp account key v1'),
+    },
+    ikm,
+    { name: 'HMAC', hash: 'SHA-256', length: 256 },
+    false,
+    ['sign'],
+  );
+  const mac = await crypto.subtle.sign('HMAC', hmacKey, encoder.encode(netatmoUserId));
+  return `u_${base64UrlEncode(new Uint8Array(mac).slice(0, 18))}`;
+}

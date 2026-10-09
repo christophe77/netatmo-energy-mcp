@@ -19,6 +19,7 @@ import { systemClock } from '../../src/utils/clock.js';
 import { createLogger, type Logger, type LogLevel } from '../../src/utils/logger.js';
 import { constantTimeEqual, randomToken, sha256Base64Url } from '../../src/utils/web-crypto.js';
 import { confirmMode, writeLimits, type Env } from './env.js';
+import { netatmoFetch } from './netatmo-fetch.js';
 import { importDataKey, seal, unseal } from './seal.js';
 
 /** Header carrying the verified MCP token facts from the Worker to the account object. */
@@ -309,21 +310,6 @@ function validateLink(input: NetatmoLink): NetatmoLink {
       scope: t.scope.filter((s): s is string => typeof s === 'string'),
       clientId: input.clientId,
     },
-  };
-}
-
-/**
- * `fetch` for Netatmo. NETATMO_API_BASE redirects api.netatmo.com to a local fake for tests; it
- * is honoured only for loopback addresses, so a misconfiguration cannot send tokens elsewhere.
- */
-function netatmoFetch(base: string | undefined): FetchFn {
-  if (!base) return (input, init) => fetch(input, init);
-  if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base)) {
-    throw new Error('NETATMO_API_BASE may only point to a loopback address (tests).');
-  }
-  return (input, init) => {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-    return fetch(url.replace(/^https:\/\/api\.netatmo\.com/, base), init);
   };
 }
 

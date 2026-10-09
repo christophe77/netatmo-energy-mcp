@@ -33,19 +33,41 @@ ${body}</html>`,
   );
 }
 
-export function consentPage(d: ConsentDescription, handle: string, error?: string): string {
+export interface ConsentOptions {
+  onboarding: 'off' | 'invite' | 'open';
+  /** Redirect URI an onboarding user registers in their Netatmo app. */
+  callbackUrl: string;
+}
+
+export function consentPage(d: ConsentDescription, handle: string, opts: ConsentOptions): string {
   const name = escape(d.clientName);
   const origin = d.clientDomain
     ? `Published by <strong>${escape(d.clientDomain)}</strong>.`
     : 'This app registered itself; its name is <strong>not verified</strong>.';
-  return `<h1>Allow ${name} to use your Netatmo heating?</h1>
-<p>${origin} Access will be sent to <strong>${escape(d.redirectHost)}</strong>.</p>
-${d.redirectIsLoopback ? '<p class="warn"><strong>This sends access to an app on your computer.</strong> Continue only if you just started signing in from it.</p>' : ''}
-<p>The assistant will be able to read your heating data, and to change it if write mode was enabled during setup (each change still needs your confirmation).</p>
-${error ? `<p class="warn">${escape(error)}</p>` : ''}
-<form method="post">
-<input type="hidden" name="handle" value="${escape(handle)}">
+  const h = escape(handle);
+  const owner = `<form method="post">
+<input type="hidden" name="handle" value="${h}">
 <label>Owner password<input type="password" name="password" autocomplete="current-password" required></label>
 <p><button name="decision" value="approve">Allow</button> <button name="decision" value="deny" formnovalidate>Deny</button></p>
 </form>`;
+  const onboarding =
+    opts.onboarding === 'off'
+      ? ''
+      : `<h2>Or connect your own Netatmo account</h2>
+<p>Create a free app at <strong>dev.netatmo.com/apps</strong> with this redirect URI:<br><code>${escape(opts.callbackUrl)}</code><br>then enter its client ID and secret. They are stored encrypted and used only for your home.</p>
+<form method="post">
+<input type="hidden" name="handle" value="${h}">
+<label>Netatmo app client ID<input name="client_id" autocomplete="off" required></label>
+<label>Netatmo app client secret<input type="password" name="client_secret" autocomplete="off" required></label>
+${opts.onboarding === 'invite' ? '<label>Invite code<input name="invite" autocomplete="off" required></label>' : ''}
+<p><label><input type="checkbox" name="write"> Also allow changes to the heating (each change still needs your confirmation)</label></p>
+<p><button name="decision" value="onboard">Continue with Netatmo</button></p>
+</form>`;
+  return `<h1>Allow ${name} to use Netatmo heating?</h1>
+<p>${origin} Access will be sent to <strong>${escape(d.redirectHost)}</strong>.</p>
+${d.redirectIsLoopback ? '<p class="warn"><strong>This sends access to an app on your computer.</strong> Continue only if you just started signing in from it.</p>' : ''}
+<p>The assistant will be able to read heating data, and to change it only if write access was granted (each change still needs confirmation).</p>
+<h2>Owner</h2>
+${owner}
+${onboarding}`;
 }

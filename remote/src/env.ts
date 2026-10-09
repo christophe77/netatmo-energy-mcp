@@ -21,7 +21,7 @@ export interface Env {
   /** 32 random bytes, base64: encrypts Netatmo secrets at rest (secret). */
   DATA_KEY?: string;
 
-  /** off | invite | open (ADR-0014). Only "off" is implemented in this version. */
+  /** off | invite | open (ADR-0014 §1). Default off: owner only. */
   ONBOARDING?: string;
   NETATMO_MCP_WRITE?: string;
   NETATMO_MCP_CONFIRM?: string;

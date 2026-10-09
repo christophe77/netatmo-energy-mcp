@@ -23,6 +23,13 @@ import {
   type SecretCheck,
 } from './account.js';
 import type { Env } from './env.js';
+import {
+  callbackUrl,
+  createInvite,
+  netatmoCallback,
+  onboardingMode,
+  startOnboarding,
+} from './onboarding.js';
 import { consentPage, escape, page } from './pages.js';
 
 export { Account };
@@ -70,17 +77,27 @@ async function authorize(request: Request, env: Env): Promise<Response> {
       const consent = await oauth.beginConsent(authRequest);
       return page(
         `Authorize ${details.clientName}`,
-        consentPage(details, consent.handle),
+        consentPage(details, consent.handle, {
+          onboarding: onboardingMode(env),
+          callbackUrl: callbackUrl(env),
+        }),
         200,
         consent.headers,
-        // Validated by parseAuthRequest(): https, or http on loopback only.
-        new URL(authRequest.redirectUri).origin,
+        // Validated by parseAuthRequest(): https, or http on loopback only. Onboarding forms
+        // redirect to Netatmo's authorization page first.
+        [
+          new URL(authRequest.redirectUri).origin,
+          ...(onboardingMode(env) === 'off' ? [] : ['https://api.netatmo.com']),
+        ].join(' '),
       );
     }
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
     const form = await request.formData();
     const handle = String(form.get('handle') ?? '');
+    if (form.get('decision') === 'onboard') {
+      return startOnboarding(request, env, form, handle, SCOPE);
+    }
     if (form.get('decision') !== 'approve') {
       const denied = await oauth.denyConsent(request, handle);
       return new Response(null, { status: 302, headers: denied.headers });
@@ -123,6 +140,22 @@ function secretRefused(check: Exclude<SecretCheck, 'ok'>, what: string): Respons
     : page(`Wrong ${what}`, `<h1>Wrong ${what}</h1><p>Go back and try again.</p>`, 403);
 }
 
+/** Netatmo redirect after onboarding; invalid or replayed states are rendered, never redirected. */
+async function callback(request: Request, env: Env): Promise<Response> {
+  try {
+    return await netatmoCallback(request, env, SCOPE);
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      return page(
+        'Authorization error',
+        `<h1>Cannot continue</h1><p>${escape(error.description)}</p>`,
+        400,
+      );
+    }
+    throw error;
+  }
+}
+
 // ------------------------------------------------------------------ admin (CLI)
 
 async function admin(request: Request, env: Env, path: string): Promise<Response> {
@@ -138,6 +171,10 @@ async function admin(request: Request, env: Env, path: string): Promise<Response
   try {
     if (path === '/admin/status' && request.method === 'GET') {
       return json(200, { version: VERSION, ...(await owner.status()) });
+    }
+    if (path === '/admin/invite' && request.method === 'POST') {
+      if (onboardingMode(env) !== 'invite') return json(409, { error: 'onboarding_not_invite' });
+      return json(200, await createInvite(env));
     }
     if (path === '/admin/setup' && request.method === 'POST') {
       const body = (await request.json().catch(() => null)) as NetatmoLink | null;
@@ -159,8 +196,8 @@ const defaultHandler = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
     if (pathname === '/authorize') return authorize(request, env);
-    if (pathname === '/admin/setup' || pathname === '/admin/status')
-      return admin(request, env, pathname);
+    if (pathname === '/netatmo/callback' && request.method === 'GET') return callback(request, env);
+    if (pathname.startsWith('/admin/')) return admin(request, env, pathname);
     if (pathname === '/') {
       return page(
         'Netatmo Energy MCP',

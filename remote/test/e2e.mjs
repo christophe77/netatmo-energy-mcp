@@ -29,6 +29,7 @@ const SECRETS = {
   SETUP_TOKEN: 'e2e-setup-token-not-secret',
   DATA_KEY: Buffer.from(randomBytes(32)).toString('base64'),
   NETATMO_API_BASE: `http://127.0.0.1:${NETATMO_PORT}`,
+  ONBOARDING: 'invite',
   LOG_LEVEL: 'warn',
 };
 
@@ -54,6 +55,24 @@ const fake = http.createServer((req, res) => {
     };
     if (url.pathname === '/oauth2/token') {
       const form = new URLSearchParams(body);
+      if (form.get('grant_type') === 'authorization_code') {
+        if (
+          form.get('code') !== 'second-user-code' ||
+          form.get('client_id') !== 'second-client-id'
+        ) {
+          return send(400, JSON.stringify({ error: 'invalid_grant' }));
+        }
+        netatmo.tokens.add('u2-access');
+        return send(
+          200,
+          JSON.stringify({
+            access_token: 'u2-access',
+            refresh_token: 'u2-refresh',
+            expires_in: 10800,
+            scope: ['read_thermostat'],
+          }),
+        );
+      }
       netatmo.refreshes++;
       const n = netatmo.refreshes + 1;
       netatmo.tokens.add(`access-${n}`);
@@ -70,7 +89,13 @@ const fake = http.createServer((req, res) => {
     const token = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1];
     if (!netatmo.tokens.has(token))
       return send(403, JSON.stringify({ error: { code: 3, message: 'Access token expired' } }));
-    if (url.pathname === '/api/homesdata') return send(200, fixture('homesdata.json'));
+    if (url.pathname === '/api/homesdata') {
+      if (token !== 'u2-access') return send(200, fixture('homesdata.json'));
+      const second = JSON.parse(fixture('homesdata.json'));
+      second.body.user.id = 'second-netatmo-user';
+      second.body.homes[0].name = 'Second Home';
+      return send(200, JSON.stringify(second));
+    }
     if (url.pathname === '/api/homestatus') return send(200, fixture('homestatus.json'));
     if (req.method === 'POST') {
       netatmo.writes.push({ path: url.pathname, body });
@@ -222,7 +247,8 @@ try {
       .getSetCookie()
       .map((c) => c.split(';')[0])
       .join('; ');
-    const handle = /name="handle" value="([^"]+)"/.exec(await consent.text())?.[1];
+    const consentHtml = await consent.text();
+    const handle = /name="handle" value="([^"]+)"/.exec(consentHtml)?.[1];
     const post = (password) =>
       fetch(authUrl, {
         method: 'POST',
@@ -230,7 +256,7 @@ try {
         headers: { 'content-type': 'application/x-www-form-urlencoded', cookie: cookies },
         body: new URLSearchParams({ handle, decision: 'approve', password }),
       });
-    return { as, reg, verifier, redirect, post, prm };
+    return { as, reg, verifier, redirect, post, prm, authUrl, cookies, handle, html: consentHtml };
   }
   const c1 = await connect();
   check(
@@ -357,6 +383,113 @@ try {
       'write limits apply remotely',
     );
     await client.close();
+  }
+
+  // ---------------------------------------------------------------- onboarding (invite)
+  {
+    const invite = await (
+      await admin('/admin/invite', SECRETS.SETUP_TOKEN, { method: 'POST' })
+    ).json();
+    check(typeof invite.code === 'string', 'owner creates an invite code');
+    const c2 = await connect();
+    check(
+      c2.html.includes('connect your own Netatmo account') && c2.html.includes('/netatmo/callback'),
+      'consent page offers onboarding with the callback URL',
+    );
+    const onboard = (code) =>
+      fetch(c2.authUrl, {
+        method: 'POST',
+        redirect: 'manual',
+        headers: { 'content-type': 'application/x-www-form-urlencoded', cookie: c2.cookies },
+        body: new URLSearchParams({
+          handle: c2.handle,
+          decision: 'onboard',
+          client_id: 'second-client-id',
+          client_secret: 'second-secret-123',
+          invite: code,
+        }),
+      });
+    check((await onboard('not-a-real-invite')).status === 403, 'unknown invite code refused');
+    const toNetatmo = await onboard(invite.code);
+    const netatmoUrl = new URL(toNetatmo.headers.get('location') ?? 'http://x/');
+    check(
+      toNetatmo.status === 302 &&
+        netatmoUrl.host === 'api.netatmo.com' &&
+        netatmoUrl.searchParams.get('redirect_uri') === `${BASE}/netatmo/callback`,
+      'redirects to Netatmo with the callback URL',
+    );
+    check(
+      netatmoUrl.searchParams.get('client_id') === 'second-client-id' &&
+        !netatmoUrl.href.includes('second-secret'),
+      'Netatmo URL carries the client ID, never the secret',
+    );
+    const upstreamCookies = [
+      c2.cookies,
+      ...toNetatmo.headers.getSetCookie().map((c) => c.split(';')[0]),
+    ].join('; ');
+    const state = netatmoUrl.searchParams.get('state');
+    const callback = (cookie) =>
+      fetch(`${BASE}/netatmo/callback?code=second-user-code&state=${encodeURIComponent(state)}`, {
+        redirect: 'manual',
+        headers: { cookie },
+      });
+    check(
+      (await callback(c2.cookies)).status === 400,
+      'callback refused without the browser binding cookie',
+    );
+    const back = await callback(upstreamCookies);
+    const clientRedirect = new URL(back.headers.get('location') ?? 'http://x/');
+    const code2 = clientRedirect.searchParams.get('code');
+    check(
+      back.status === 302 && clientRedirect.origin === 'http://localhost:9999' && Boolean(code2),
+      'callback links the account and returns to the MCP client',
+    );
+    check((await callback(upstreamCookies)).status === 400, 'callback state is single-use');
+    const tok2 = await (
+      await fetch(c2.as.token_endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: code2,
+          redirect_uri: c2.redirect,
+          client_id: c2.reg.client_id,
+          code_verifier: c2.verifier,
+          resource: c2.prm.resource,
+        }),
+      })
+    ).json();
+    const second = new Client({ name: 'e2e-2', version: '0' });
+    await second.connect(
+      new StreamableHTTPClientTransport(new URL(`${BASE}/mcp`), {
+        requestInit: { headers: { authorization: `Bearer ${tok2.access_token}` } },
+      }),
+    );
+    const homes2 = await call(second, 'netatmo_list_homes');
+    check(homes2.body.homes?.[0]?.name === 'Second Home', 'onboarded account sees its own home');
+    const { tools: tools2 } = await second.listTools();
+    check(tools2.length === 15, 'onboarded read-only account has the 15 read tools');
+    await second.close();
+    const ownerAgain = await mcp('modern');
+    check(
+      (await call(ownerAgain, 'netatmo_list_homes')).body.homes?.[0]?.name === 'Test Home',
+      "owner still sees only the owner's home",
+    );
+    await ownerAgain.close();
+    const c3 = await connect();
+    const reuse = await fetch(c3.authUrl, {
+      method: 'POST',
+      redirect: 'manual',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie: c3.cookies },
+      body: new URLSearchParams({
+        handle: c3.handle,
+        decision: 'onboard',
+        client_id: 'second-client-id',
+        client_secret: 'second-secret-123',
+        invite: invite.code,
+      }),
+    });
+    check(reuse.status === 403, 'invite code is single-use');
   }
 
   // ---------------------------------------------------------------- lockout
