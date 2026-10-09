@@ -84,3 +84,37 @@ npx wrangler delete
 ```
 
 Also delete the KV namespace in the Cloudflare dashboard.
+
+## Results (2026-10-09)
+
+Deployed to the maintainer's Cloudflare account (workers.dev). Exit
+criterion of ADR-0013: met for both clients.
+
+| Client                                  | Registration                                                                    | OAuth | Tool call         |
+| --------------------------------------- | ------------------------------------------------------------------------------- | ----- | ----------------- |
+| ChatGPT (desktop app and mobile)        | Client ID Metadata Document `https://chatgpt.com/oauth/client.json`             | ✅    | ✅ `spike_whoami` |
+| Claude (claude.ai, desktop app, mobile) | Client ID Metadata Document `https://claude.ai/oauth/mcp-oauth-client-metadata` | ✅    | ✅ `spike_whoami` |
+
+Findings:
+
+- **Both clients use Client ID Metadata Documents, not dynamic
+  registration.** The consent page can therefore show a _verified_ domain
+  ("Published by chatgpt.com"), which is what ADR-0013 §5 relies on. DCR
+  stays enabled for other clients (tested by `e2e.mjs`).
+- **Bug found and fixed:** the consent page's CSP `form-action 'self'`
+  made Chromium block the redirect that hands the code back to the client
+  (the browser applies `form-action` to redirects after a form POST). The
+  client then never exchanged its code. The page now allows the validated
+  redirect origin; `e2e.mjs` checks it. Only a real browser shows this.
+- **ChatGPT** listed the tools only after "Refresh" on the app page. It
+  recommends an `outputSchema` on every tool (the real tools have one).
+  It also probes `/.well-known/openid-configuration` (404 is fine).
+- **Claude** requires approval per tool by default ("Needs approval"),
+  which adds a client-side confirmation in front of write tools.
+- **Library:** `@cloudflare/workers-oauth-provider` 1.2.3 covered
+  discovery, CIMD, DCR, PKCE, consent helpers and token storage without
+  changes. Re-check the pinned version before production.
+- **Operations:** `wrangler tail` disconnected silently after about an
+  hour. Use Workers Logs (observability) for the real service.
+- Not covered by the spike: Netatmo onboarding, Durable Objects, sealed
+  confirmation tokens, free-tier limits under load.

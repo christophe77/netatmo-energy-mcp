@@ -203,10 +203,11 @@ recommended option for clients that can run it.
   flow.** Its limitation (ADR-0012: it cannot prove a human agreed)
   matters more for a service open to many users. Write mode stays opt-in
   per account, with the same limits.
-- **Open questions for the spike:**
-  - The exact MCP authorization requirements of ChatGPT and Claude
-    connectors (dynamic client registration and/or client metadata
-    documents).
+- **Spike result (2026-10-09):** ChatGPT (desktop and mobile) and Claude
+  (web, desktop and mobile) both registered with Client ID Metadata
+  Documents, completed OAuth and called a tool. Details and findings:
+  [spike/remote-worker/README.md](../../spike/remote-worker/README.md#results-2026-10-09).
+- **Open questions left for 0.3:**
   - Durable Object and storage limits on the free tier.
   - Whether Netatmo accepts the service's callback URL in user-created
     apps.
