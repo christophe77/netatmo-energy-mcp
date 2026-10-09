@@ -5,7 +5,12 @@ import type { ControlService } from '../domain/control-service.js';
 import { DAYS } from '../domain/heating/schedule.js';
 import { homeRefSchema } from '../domain/views.js';
 import type { Logger } from '../utils/logger.js';
-import { confirmAndApply, ConfirmationTokens, type ConfirmContext } from './confirm.js';
+import {
+  confirmAndApply,
+  ConfirmationTokens,
+  type ConfirmationStore,
+  type ConfirmContext,
+} from './confirm.js';
 import * as input from './inputs.js';
 import { runTool } from './results.js';
 
@@ -137,11 +142,18 @@ export function registerWriteTools(
   server: McpServer,
   control: ControlService,
   logger: Logger,
-  options: { confirmMode?: ConfirmMode } = {},
+  options: {
+    confirmMode?: ConfirmMode;
+    /**
+     * Where confirmation tokens live. Default: in memory, which suits one long-lived connection
+     * (stdio). Per-request HTTP serving must pass a store shared across requests.
+     */
+    confirmations?: ConfirmationStore;
+  } = {},
 ): void {
   const c: ConfirmContext = {
     server,
-    tokens: new ConfirmationTokens(() => control.now()),
+    tokens: options.confirmations ?? new ConfirmationTokens(() => control.now()),
     logger,
     mode: options.confirmMode ?? 'auto',
   };

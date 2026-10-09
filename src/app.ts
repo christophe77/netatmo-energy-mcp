@@ -3,25 +3,18 @@ import { CredentialStore, type StoredCredentials } from './auth/credential-store
 import type { FetchFn } from './auth/oauth.js';
 import { TokenManager } from './auth/token-manager.js';
 import type { AppConfig } from './config/loader.js';
-import { AnalyticsService } from './domain/analytics-service.js';
 import { FileAuditLog } from './local/file-audit-log.js';
-import { ControlService } from './domain/control-service.js';
-import { EnergyService } from './domain/energy-service.js';
-import { HistoryService } from './domain/history/history-service.js';
+import { createServices, type Services } from './domain/services.js';
 import { NetatmoClient, type NetatmoClientOptions } from './netatmo/client.js';
 import { RateLimiter, type RateWindow } from './netatmo/rate-limiter.js';
 import { WRITE_SCOPE } from './netatmo/write-endpoints.js';
 import { systemClock, type Clock } from './utils/clock.js';
 import type { Logger } from './utils/logger.js';
 
-export interface Runtime {
+export interface Runtime extends Services {
   store: CredentialStore;
   tokens: TokenManager;
   client: NetatmoClient;
-  history: HistoryService;
-  service: EnergyService;
-  analytics: AnalyticsService;
-  control: ControlService;
   clock: Clock;
 }
 
@@ -72,10 +65,7 @@ export function createRuntime(
     ...(overrides.fetch && { fetch: overrides.fetch }),
     ...(overrides.onExchange && { onExchange: overrides.onExchange }),
   });
-  const history = new HistoryService(client);
-  const service = new EnergyService(client, history, clock);
-  const analytics = new AnalyticsService(client, history, service, clock);
   const audit = new FileAuditLog(path.join(config.paths.dir, 'changes.log'), logger);
-  const control = new ControlService(client, config.limits, audit, clock);
-  return { store, tokens, client, history, service, analytics, control, clock };
+  const services = createServices(client, clock, config.limits, audit);
+  return { store, tokens, client, ...services, clock };
 }

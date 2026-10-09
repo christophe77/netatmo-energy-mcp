@@ -1,9 +1,10 @@
-import { McpServer } from '@modelcontextprotocol/server';
+import { McpServer, type ServerOptions } from '@modelcontextprotocol/server';
 import type { ConfirmMode } from '../domain/write-limits.js';
 import type { AnalyticsService } from '../domain/analytics-service.js';
 import type { ControlService } from '../domain/control-service.js';
 import type { EnergyService } from '../domain/energy-service.js';
 import type { Logger } from '../utils/logger.js';
+import type { ConfirmationStore } from './confirm.js';
 import { PACKAGE_NAME, VERSION } from '../version.js';
 import { registerPrompts } from './prompts.js';
 import { registerResources } from './resources.js';
@@ -32,6 +33,10 @@ export interface McpServerOptions {
   writeMode: boolean;
   /** How changes are confirmed (NETATMO_MCP_CONFIRM). */
   confirmMode?: ConfirmMode;
+  /** Shared confirmation store; required when one server instance serves only one request. */
+  confirmations?: ConfirmationStore;
+  /** JSON Schema validator; Workers need the cfworker one (ajv compiles with new Function). */
+  jsonSchemaValidator?: ServerOptions['jsonSchemaValidator'];
 }
 
 /** Build the MCP server around the application services. Transport-agnostic. */
@@ -43,13 +48,17 @@ export function createMcpServer(
 ): McpServer {
   const server = new McpServer(
     { name: PACKAGE_NAME, version: VERSION, title: 'Netatmo Energy' },
-    { instructions: options.writeMode ? WRITE_INSTRUCTIONS : READ_ONLY_INSTRUCTIONS },
+    {
+      instructions: options.writeMode ? WRITE_INSTRUCTIONS : READ_ONLY_INSTRUCTIONS,
+      ...(options.jsonSchemaValidator && { jsonSchemaValidator: options.jsonSchemaValidator }),
+    },
   );
   registerTools(server, service, analytics, logger);
   registerScheduleReadTool(server, options.control, logger);
   if (options.writeMode) {
     registerWriteTools(server, options.control, logger, {
       confirmMode: options.confirmMode ?? 'auto',
+      ...(options.confirmations && { confirmations: options.confirmations }),
     });
   }
   registerResources(server, service);
