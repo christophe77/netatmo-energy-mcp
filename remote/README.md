@@ -120,6 +120,15 @@ computer can be approved. A self-registered app could otherwise pretend to
 be ChatGPT to phish your owner password. To allow other MCP clients that
 register themselves, set `ALLOW_UNVERIFIED_CLIENTS` to `1`.
 
+### If ChatGPT shows no tools
+
+- Open the app page and press **Refresh** (`Actualiser`) once the account
+  shows as connected.
+- If no account appears after you allowed access, or the sign-in window
+  keeps spinning, delete the app in ChatGPT and create it again. ChatGPT
+  can keep a failed first connection and stop calling the server; the
+  server logs then show the token being issued but no `/mcp` request.
+
 ## Options
 
 Set in `wrangler.jsonc` under `vars` (then deploy again):
@@ -145,7 +154,10 @@ npx netatmo-energy-mcp remote status https://netatmo-energy-mcp.<you>.workers.de
 ```
 
 - **Logs**: Cloudflare dashboard → Workers → netatmo-energy-mcp →
-  Observability. Secrets and tokens are never logged.
+  Observability. One line per MCP request (client, method, status, size,
+  JSON-RPC error code). Secrets, tokens, arguments and results are never
+  logged. A wrong-password page with no typo usually means
+  `OWNER_PASSWORD` is unset or too short: the log says so.
 - **Accounts and connected assistants**: `remote accounts <url>`.
 - **Revoke access**: `remote revoke <url>` disconnects every assistant
   (`--account <key>` for one account). They must sign in again. Do this

@@ -83,13 +83,50 @@ export class Account extends DurableObject<Env> {
     const headers = new Headers(request.headers);
     headers.delete(AUTH_HEADER);
     const handler = await this.mcpHandler();
-    return handler.fetch(new Request(request, { headers }), {
-      authInfo: {
-        token: '',
-        clientId: auth.clientId,
-        scopes: auth.scopes,
-        ...(auth.expiresAt !== undefined && { expiresAt: auth.expiresAt }),
+    const body = request.method === 'POST' ? await request.text() : undefined;
+    const response = await handler.fetch(
+      new Request(request.url, {
+        method: request.method,
+        headers,
+        ...(body !== undefined && { body }),
+      }),
+      {
+        authInfo: {
+          token: '',
+          clientId: auth.clientId,
+          scopes: auth.scopes,
+          ...(auth.expiresAt !== undefined && { expiresAt: auth.expiresAt }),
+        },
       },
+    );
+    // Read a copy of the response only to log the JSON-RPC error code, if any.
+    const copy = response.clone();
+    this.ctx.waitUntil(
+      copy
+        .text()
+        .catch(() => '')
+        .then((text) => this.logExchange(auth.clientId, body, response, text)),
+    );
+    return response;
+  }
+
+  /** One line per MCP request: client, JSON-RPC method, HTTP status. Never params or results. */
+  private logExchange(
+    clientId: string,
+    body: string | undefined,
+    response: Response,
+    text: string,
+  ): void {
+    const error = /"error":\{"code":(-?\d+)/.exec(text)?.[1];
+    let method = requestMethod(body);
+    if (method.length > 60) method = method.slice(0, 60);
+    this.logger.info('MCP request', {
+      client: clientId.slice(0, 60),
+      method,
+      status: response.status,
+      type: response.headers.get('content-type')?.split(';')[0] ?? '',
+      bytes: text.length,
+      ...(error && { rpcError: Number(error) }),
     });
   }
 
@@ -369,5 +406,19 @@ class DurableAuditLog implements AuditLog {
     } catch (error) {
       this.logger.warn('Could not write the change log', { error });
     }
+  }
+}
+
+/** JSON-RPC method name(s) of a request body, for logs; "batch" lists them. */
+function requestMethod(body: string | undefined): string {
+  if (!body) return '-';
+  try {
+    const parsed = JSON.parse(body) as { method?: unknown } | { method?: unknown }[];
+    const methods = (Array.isArray(parsed) ? parsed : [parsed]).map((m) =>
+      typeof m.method === 'string' ? m.method : 'response',
+    );
+    return methods.join(',');
+  } catch {
+    return 'invalid-json';
   }
 }

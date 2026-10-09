@@ -59,6 +59,12 @@ export class Guard extends DurableObject<Env> {
     const state = await this.ctx.storage.get<Window>(key);
     if (state && state.count >= LOCKOUT.maxFailures && state.resetAt > now) return 'locked';
     const expected = this.env[name];
+    if (typeof expected !== 'string' || expected.length < SECRET_MIN_LENGTH[name]) {
+      // Fails closed; say why in the logs (never the value), since the page only says "wrong".
+      console.warn(
+        `${name} is ${typeof expected !== 'string' ? 'not set' : `shorter than ${SECRET_MIN_LENGTH[name]} characters`}: every attempt is refused. Set it again with "npx wrangler secret put ${name}".`,
+      );
+    }
     const matches =
       typeof expected === 'string' &&
       expected.length >= SECRET_MIN_LENGTH[name] &&
