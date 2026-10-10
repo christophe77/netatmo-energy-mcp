@@ -7,6 +7,13 @@ minor versions may contain breaking changes; they are always listed.
 
 ## [Unreleased]
 
+### Fixed
+
+- The configuration folder was reported as holding "other files" once
+  write mode had created `changes.log`, or after a stale lock had been
+  broken (`credentials.lock.break`). Its permissions were then no longer
+  tightened by `login`. Both files are now recognised as the server's own.
+
 ## [0.3.0] - 2026-10-09
 
 Remote server for ChatGPT and Claude on the web and on mobile. The local
