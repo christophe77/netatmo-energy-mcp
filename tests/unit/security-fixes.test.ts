@@ -77,6 +77,8 @@ describe('L1: foreign folders are never re-permissioned', () => {
     expect(await containsOnlyOwnFiles(dir)).toBe(true);
     await fs.writeFile(path.join(dir, 'credentials.json'), '{}');
     await fs.mkdir(path.join(dir, 'probe'));
+    await fs.writeFile(path.join(dir, 'changes.log'), '');
+    await fs.writeFile(path.join(dir, 'credentials.lock.break'), '');
     expect(await containsOnlyOwnFiles(dir)).toBe(true);
     await fs.writeFile(path.join(dir, 'thesis.docx'), 'x');
     expect(await containsOnlyOwnFiles(dir)).toBe(false);

@@ -78,7 +78,7 @@ export async function ensureSecureDir(
 }
 
 const OWN_ENTRY =
-  /^(credentials\.json|credentials\.lock(\..+\.stale)?|probe|\.credentials\.json\..+\.tmp)$/;
+  /^(credentials\.json|credentials\.lock(\.break|\..+\.stale)?|changes\.log|probe|\.credentials\.json\..+\.tmp)$/;
 
 /** True if `dir` is empty or holds only files created by netatmo-energy-mcp. */
 export async function containsOnlyOwnFiles(dir: string): Promise<boolean> {
