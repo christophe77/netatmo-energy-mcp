@@ -43,7 +43,7 @@ servers. For them, deploy the optional
 [remote server](#web-and-mobile-remote-server) to your own Cloudflare
 account (free plan).
 
-> **Status: early release (0.3.0).** The Netatmo API integration has been
+> **Status: early release (0.3.1).** The Netatmo API integration has been
 > validated on a real installation; feedback and device reports are welcome.
 
 ## Why this project?
