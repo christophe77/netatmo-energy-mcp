@@ -44,7 +44,7 @@ serveurs distants. Pour eux, déployez le
 [serveur distant](#web-et-mobile-serveur-distant) optionnel sur votre
 propre compte Cloudflare (offre gratuite).
 
-> **État : première version (0.3.0).** L'intégration de l'API Netatmo a été
+> **État : première version (0.3.1).** L'intégration de l'API Netatmo a été
 > validée sur une installation réelle ; retours et rapports de compatibilité
 > bienvenus.
 
