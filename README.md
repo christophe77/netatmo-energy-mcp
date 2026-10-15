@@ -7,6 +7,7 @@
 [![CI](https://github.com/christophe77/netatmo-energy-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/christophe77/netatmo-energy-mcp/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 ![Node.js >= 22.19](https://img.shields.io/badge/node-%3E%3D22.19-339933)
+[![Glama score](https://glama.ai/mcp/servers/christophe77/netatmo-energy-mcp/badges/score.svg)](https://glama.ai/mcp/servers/christophe77/netatmo-energy-mcp)
 
 A **Netatmo MCP server** for **Netatmo smart thermostats and smart
 radiator valves**. It gives AI assistants structured access to your

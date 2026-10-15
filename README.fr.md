@@ -7,6 +7,7 @@
 [![CI](https://github.com/christophe77/netatmo-energy-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/christophe77/netatmo-energy-mcp/actions/workflows/ci.yml)
 [![Licence : Apache-2.0](https://img.shields.io/badge/licence-Apache--2.0-blue.svg)](LICENSE)
 ![Node.js >= 22.19](https://img.shields.io/badge/node-%3E%3D22.19-339933)
+[![Note Glama](https://glama.ai/mcp/servers/christophe77/netatmo-energy-mcp/badges/score.svg)](https://glama.ai/mcp/servers/christophe77/netatmo-energy-mcp)
 
 Un **serveur MCP Netatmo** pour les **thermostats intelligents et vannes
 thermostatiques Netatmo**. Il donne aux assistants IA un accès structuré
