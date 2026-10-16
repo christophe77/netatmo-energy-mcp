@@ -1,0 +1,17 @@
+{
+  "name": "netatmo-energy-mcp",
+  "owner": {
+    "name": "christophe77"
+  },
+  "metadata": {
+    "description": "Claude Code plugin for Netatmo Energy heating systems (thermostats, radiator valves)."
+  },
+  "plugins": [
+    {
+      "name": "netatmo-energy",
+      "source": "./plugins/netatmo-energy",
+      "description": "Netatmo Energy MCP server plus a skill for heating diagnostics, reports and safe schedule changes.",
+      "category": "productivity"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "netatmo-energy",
+  "version": "0.3.1",
+  "description": "Netatmo Energy MCP server plus a skill for heating diagnostics, reports and safe schedule changes.",
+  "author": {
+    "name": "christophe77"
+  },
+  "homepage": "https://github.com/christophe77/netatmo-energy-mcp#readme",
+  "repository": "https://github.com/christophe77/netatmo-energy-mcp",
+  "license": "Apache-2.0",
+  "keywords": ["netatmo", "thermostat", "radiator-valves", "heating", "smart-home", "mcp"]
+}

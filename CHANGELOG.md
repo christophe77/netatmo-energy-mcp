@@ -7,6 +7,13 @@ minor versions may contain breaking changes; they are always listed.
 
 ## [Unreleased]
 
+### Added
+
+- Claude Code plugin (`plugins/netatmo-energy`, listed in the repository's
+  marketplace): installs the MCP server together with a `netatmo-energy`
+  skill covering tool choice, diagnostics of a cold or overheated room,
+  reports, room comparison and the confirmation flow for heating changes.
+
 ## [0.3.1] - 2026-10-10
 
 ### Fixed
