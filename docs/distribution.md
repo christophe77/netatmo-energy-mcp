@@ -15,7 +15,7 @@ is only marked done here once it has been seen live.
 | [PulseMCP](https://www.pulsemcp.com)                                              | Automatic                                                                      | Submissions paused; it ingests the Official Registry | Official Registry listing                                                            |
 | [Cursor Directory](https://cursor.directory)                                      | Optional                                                                       | Submit on the site after GitHub login                | —                                                                                    |
 | [Claude plugin directory](https://claude.ai/directory/manage)                     | To submit                                                                      | Developer portal → _Plugin bundle_ (free)            | Paid Claude plan to submit, public repository: see [below](#claude-plugin-directory) |
-| [Agensi](https://www.agensi.io/sell) (skill only)                                 | Optional                                                                       | Upload a ZIP of the skill, price $0 (free to list)   | Original work; security scan, AI and human review (24–48 h)                          |
+| [Agensi](https://www.agensi.io/sell) (skill only)                                 | In review (submitted 2026-10-16, "Netatmo Energy Heating Assistant", free)     | Upload a ZIP of the skill, price $0 (free to list)   | Original work; security scan, AI and human review (24–48 h)                          |
 | Claude connectors directory                                                       | Later (0.4)                                                                    | Developer portal → _MCP connector_                   | A public remote server run by the maintainer, OAuth, reviewer test account           |
 | ChatGPT plugin directory                                                          | Later (0.4)                                                                    | OpenAI platform dashboard                            | Same, plus publisher and domain verification                                         |
 | [Smithery](https://smithery.ai)                                                   | Later                                                                          | Local servers only as an MCPB bundle                 | `.mcpb` bundle (not built yet)                                                       |
@@ -140,8 +140,10 @@ paid skills. Every skill gets an automated security scan, an AI review
 and a human check (24–48 h). Checked 2026-10-16.
 
 - Upload a ZIP of the
-  [`netatmo-energy` skill folder](../plugins/netatmo-energy/skills/netatmo-energy),
-  priced **Free**.
+  [`netatmo-energy` skill folder](../plugins/netatmo-energy/skills/netatmo-energy)
+  (`netatmo-energy/SKILL.md` inside), priced **Free**. Build it with
+  `tar -a -c -f`: PowerShell 5.1 `Compress-Archive` writes backslash
+  paths, and Agensi then finds no `SKILL.md`.
 - Say in the listing that the skill **requires the netatmo-energy MCP
   server** (link the repository), since Agensi checks that a skill works
   with the tools it names.
