@@ -14,7 +14,7 @@ is only marked done here once it has been seen live.
 | [mcp.so](https://mcp.so)                                                          | ✅ Listed                                                                      | GitHub issue "Submit: …" on `chatmcp/mcpso` (free)   | [Issue chatmcp/mcpso#5071](https://github.com/chatmcp/mcpso/issues/5071)             |
 | [PulseMCP](https://www.pulsemcp.com)                                              | Automatic                                                                      | Submissions paused; it ingests the Official Registry | Official Registry listing                                                            |
 | [Cursor Directory](https://cursor.directory)                                      | Optional                                                                       | Submit on the site after GitHub login                | —                                                                                    |
-| [Claude plugin directory](https://claude.ai/directory/manage)                     | To submit                                                                      | Developer portal → _Plugin bundle_ (free)            | Paid Claude plan to submit, public repository: see [below](#claude-plugin-directory) |
+| [Claude plugin directory](https://claude.ai/directory/manage)                     | In review (submitted 2026-10-16, tracks `main`)                                | Developer portal → _Plugin bundle_ (free)            | Paid Claude plan to submit, public repository: see [below](#claude-plugin-directory) |
 | [Agensi](https://www.agensi.io/sell) (skill only)                                 | In review (submitted 2026-10-16, "Netatmo Energy Heating Assistant", free)     | Upload a ZIP of the skill, price $0 (free to list)   | Original work; security scan, AI and human review (24–48 h)                          |
 | Claude connectors directory                                                       | Later (0.4)                                                                    | Developer portal → _MCP connector_                   | A public remote server run by the maintainer, OAuth, reviewer test account           |
 | ChatGPT plugin directory                                                          | Later (0.4)                                                                    | OpenAI platform dashboard                            | Same, plus publisher and domain verification                                         |
@@ -93,8 +93,10 @@ in claude.ai, Cowork and Claude Code. Free to submit and to install. Docs:
 - No root `.gitattributes`: rules that rewrite contents (`text`, `eol`,
   `filter`) make validation stop with "Couldn't validate that
   repository". Line endings stay LF through `.editorconfig` and Prettier.
-- To do: merge the plugin to `main`, and connect GitHub on claude.ai
-  (the portal checks push access to the repository).
+- Submitted on 2026-10-16 from `main` (34e2bbc), auto-publish off,
+  scheduled checks only (no GitHub webhook yet). It is held for a
+  reviewer: _Runs a pinned npx or uvx package_. Once approved, select
+  **Publish** on the plugin's page in the portal.
 
 **Expected reviewer holds** (not rejections; a person reviews the
 version):
