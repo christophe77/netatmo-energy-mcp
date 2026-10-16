@@ -412,6 +412,7 @@ Read more:
 - [Security model](docs/architecture.md#10-security-model)
 - [Pre-release security review](docs/security-review.md)
 - [Reporting a vulnerability](SECURITY.md)
+- [Privacy policy](PRIVACY.md)
 
 ## Architecture
 

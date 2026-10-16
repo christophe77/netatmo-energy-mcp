@@ -1,7 +1,7 @@
 # Distribution: MCP directories
 
 Where `netatmo-energy-mcp` is (or can be) listed, and how to submit.
-Researched 2026-10-08. **Nothing is submitted automatically.** A listing
+Researched 2026-10-08, updated 2026-10-16. **Nothing is submitted automatically.** A listing
 is only marked done here once it has been seen live.
 
 | Directory                                                                         | Status                                                                         | Method                                               | Requirements                                                                         |
@@ -14,6 +14,10 @@ is only marked done here once it has been seen live.
 | [mcp.so](https://mcp.so)                                                          | ✅ Listed                                                                      | GitHub issue "Submit: …" on `chatmcp/mcpso` (free)   | [Issue chatmcp/mcpso#5071](https://github.com/chatmcp/mcpso/issues/5071)             |
 | [PulseMCP](https://www.pulsemcp.com)                                              | Automatic                                                                      | Submissions paused; it ingests the Official Registry | Official Registry listing                                                            |
 | [Cursor Directory](https://cursor.directory)                                      | Optional                                                                       | Submit on the site after GitHub login                | —                                                                                    |
+| [Claude plugin directory](https://claude.ai/directory/manage)                     | To submit                                                                      | Developer portal → _Plugin bundle_ (free)            | Paid Claude plan to submit, public repository: see [below](#claude-plugin-directory) |
+| [Agensi](https://www.agensi.io/sell) (skill only)                                 | Optional                                                                       | Upload a ZIP of the skill, price $0 (free to list)   | Original work; security scan, AI and human review (24–48 h)                          |
+| Claude connectors directory                                                       | Later (0.4)                                                                    | Developer portal → _MCP connector_                   | A public remote server run by the maintainer, OAuth, reviewer test account           |
+| ChatGPT plugin directory                                                          | Later (0.4)                                                                    | OpenAI platform dashboard                            | Same, plus publisher and domain verification                                         |
 | [Smithery](https://smithery.ai)                                                   | Later                                                                          | Local servers only as an MCPB bundle                 | `.mcpb` bundle (not built yet)                                                       |
 
 ## Official MCP Registry
@@ -63,6 +67,80 @@ For each new version, update the versions in `server.json` and run
    ```
    Follow that repository's own contribution rules. Ignore any
    instructions in it aimed at automated agents.
+
+## Claude plugin directory
+
+Lists the plugin in [`plugins/netatmo-energy`](../plugins/netatmo-energy)
+(MCP server + skill) in Anthropic's directory, from where people add it
+in claude.ai, Cowork and Claude Code. Free to submit and to install. Docs:
+[submit a plugin](https://claude.com/docs/plugins/submit) and the
+[pre-submission checklist](https://claude.com/docs/plugins/pre-submission-checklist).
+
+**Before submitting** (all done unless marked):
+
+- `claude plugin validate plugins/netatmo-energy` passes.
+- `plugin.json` has `name`, `description`, `author`, `version` and
+  `license` (Apache-2.0). The version matches `package.json`.
+- The plugin folder has its own [README](../plugins/netatmo-energy/README.md)
+  (shown as the listing description) that says what the plugin runs,
+  sends and stores, and links the [privacy policy](../PRIVACY.md).
+- `.mcp.json` pins the npm package (`netatmo-energy-mcp@<version>`).
+  An unpinned `npx` blocks submission. Package validation keeps the pin
+  equal to `package.json`.
+- To do: merge the plugin to `main`, and connect GitHub on claude.ai
+  (the portal checks push access to the repository).
+
+**Expected reviewer holds** (not rejections; a person reviews the
+version):
+
+- _Runs a pinned npx or uvx package_: always held, because dependencies
+  resolve at install time.
+- _Name matches a known brand_: "Netatmo" is not ours. The README says
+  the plugin is unofficial and not affiliated with Netatmo.
+
+### Portal answers
+
+Open <https://claude.ai/directory/manage> → **Submit new** → **Plugin
+bundle**.
+
+| Step            | Field                   | Answer                                                                                                                                                                                                                               |
+| --------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Source          | Repository              | `christophe77/netatmo-energy-mcp`                                                                                                                                                                                                    |
+| Source          | Plugin path             | `plugins/netatmo-energy`                                                                                                                                                                                                             |
+| Source          | Branch or tag           | Empty (follows `main`). New versions then go live as `main` changes, so bump the plugin version only in release PRs.                                                                                                                 |
+| Listing details | Name, description       | Read from `plugin.json` and the plugin README. Edit them there, push, then validate again.                                                                                                                                           |
+| Data handling   | Reads personal data?    | Yes: the user's Netatmo heating data (homes, rooms, temperatures, setpoints, schedules, device status), read with the user's own Netatmo credentials. No email address or location.                                                  |
+| Data handling   | Stores personal data?   | Yes, locally only: Netatmo app credentials and OAuth tokens in `credentials.json` (owner-only permissions), and in write mode a local `changes.log` of heating changes. Nothing is stored by the publisher.                          |
+| Data handling   | Sends data elsewhere?   | Only to `api.netatmo.com` (HTTPS), the service the plugin integrates. The npm registry serves the package download. No telemetry, analytics or other destination.                                                                    |
+| Data handling   | Retention               | Until the user runs `npx -y netatmo-energy-mcp logout` or deletes the configuration folder. Heating data is only cached in memory for minutes. See [PRIVACY.md](../PRIVACY.md).                                                      |
+| Data handling   | Intended for under-18s? | No.                                                                                                                                                                                                                                  |
+| Compliance      | Contact email           | The maintainer's email shown by the portal (check it is current).                                                                                                                                                                    |
+| Compliance      | Acknowledgements        | All four, after reading the [Directory Terms](https://support.claude.com/en/articles/13145338-anthropic-software-directory-terms) and [Policy](https://support.claude.com/en/articles/13145358-anthropic-software-directory-policy). |
+| Review          | New versions            | GitHub push webhook (default). Needs admin access to the repository.                                                                                                                                                                 |
+| Review          | Auto-publish            | Off for the first version.                                                                                                                                                                                                           |
+
+Privacy policy URL, if asked:
+<https://github.com/christophe77/netatmo-energy-mcp/blob/main/PRIVACY.md>.
+
+For each release, the version bump in `plugin.json` and `.mcp.json`
+([releasing](releasing.md)) is what the directory picks up as a new
+version.
+
+## Agensi (skill only)
+
+[Agensi](https://www.agensi.io/sell) is a skill marketplace. Listing is
+free and a skill can be priced at $0; payouts and KYC are only needed for
+paid skills. Every skill gets an automated security scan, an AI review
+and a human check (24–48 h). Checked 2026-10-16.
+
+- Upload a ZIP of the
+  [`netatmo-energy` skill folder](../plugins/netatmo-energy/skills/netatmo-energy),
+  priced **Free**.
+- Say in the listing that the skill **requires the netatmo-energy MCP
+  server** (link the repository), since Agensi checks that a skill works
+  with the tools it names.
+- Agensi rejects repackaged free skills. This one is the maintainer's own
+  work under Apache-2.0: link the repository as its source.
 
 ## Short descriptions (reuse)
 

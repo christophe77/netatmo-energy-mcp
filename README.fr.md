@@ -432,6 +432,7 @@ En savoir plus (en anglais) :
 - [Modèle de sécurité](docs/architecture.md#10-security-model)
 - [Revue de sécurité avant publication](docs/security-review.md)
 - [Signaler une vulnérabilité](SECURITY.md)
+- [Politique de confidentialité](PRIVACY.md)
 
 ## Architecture
 

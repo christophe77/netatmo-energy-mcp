@@ -13,6 +13,9 @@ minor versions may contain breaking changes; they are always listed.
   marketplace): installs the MCP server together with a `netatmo-energy`
   skill covering tool choice, diagnostics of a cold or overheated room,
   reports, room comparison and the confirmation flow for heating changes.
+  The plugin launches the exact npm version it ships with.
+- `PRIVACY.md`: privacy policy for the package, the plugin and a
+  self-hosted remote server.
 
 ## [0.3.1] - 2026-10-10
 

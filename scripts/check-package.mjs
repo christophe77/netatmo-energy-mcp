@@ -70,6 +70,20 @@ try {
     server.packages?.[0]?.identifier === pkg.name,
     'server.json package identifier is the npm name',
   );
+  // The Claude Code plugin must launch this exact version (the plugin directory requires a pin).
+  const pluginDir = path.join(root, 'plugins', 'netatmo-energy');
+  const plugin = JSON.parse(
+    readFileSync(path.join(pluginDir, '.claude-plugin', 'plugin.json'), 'utf8'),
+  );
+  const pluginMcp = JSON.parse(readFileSync(path.join(pluginDir, '.mcp.json'), 'utf8'));
+  check(
+    plugin.version === pkg.version,
+    `plugin.json version equals package.json version (${pkg.version})`,
+  );
+  check(
+    pluginMcp.mcpServers?.['netatmo-energy']?.args?.includes(`${pkg.name}@${pkg.version}`),
+    `plugin .mcp.json launches ${pkg.name}@${pkg.version}`,
+  );
   check(
     readFileSync(path.join(root, 'dist', 'index.js'), 'utf8').startsWith('#!/usr/bin/env node'),
     'dist/index.js has a node shebang',
