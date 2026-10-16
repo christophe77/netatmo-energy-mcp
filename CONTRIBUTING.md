@@ -44,6 +44,11 @@ pnpm build
 The test suite uses mocked Netatmo responses and needs no Netatmo
 account.
 
+On Windows, clone with LF line endings
+(`git clone -c core.autocrlf=false …`), or the format check fails. The
+repository has no `.gitattributes`, because the Claude plugin directory
+refuses attributes that rewrite file contents.
+
 | Script                                         | Purpose                                                                                        |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `pnpm test` / `pnpm test:watch`                | Unit, integration and MCP protocol tests                                                       |
