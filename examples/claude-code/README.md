@@ -30,8 +30,9 @@ On native Windows, if the server fails to start through `npx`, try
 ## Plugin
 
 The repository is also a Claude Code plugin marketplace. The
-`netatmo-energy` plugin installs the same server (`npx -y
-netatmo-energy-mcp`) plus a `netatmo-energy` skill: which tool to call
+`netatmo-energy` plugin installs the same server, pinned to the release
+it ships with (`npx -y netatmo-energy-mcp@<version>`), plus a
+`netatmo-energy` skill: which tool to call
 for which question, how to investigate a cold or overheated room, report
 and comparison formats, and the preview-and-confirm steps for heating
 changes.
