@@ -87,6 +87,12 @@ in claude.ai, Cowork and Claude Code. Free to submit and to install. Docs:
 - `.mcp.json` pins the npm package (`netatmo-energy-mcp@<version>`).
   An unpinned `npx` blocks submission. Package validation keeps the pin
   equal to `package.json`.
+- `.claude-plugin/icon.png` (512 px, from `docs/assets/logo.svg`). The
+  directory takes the listing icon from it only once, at the first save
+  or submission.
+- No root `.gitattributes`: rules that rewrite contents (`text`, `eol`,
+  `filter`) make validation stop with "Couldn't validate that
+  repository". Line endings stay LF through `.editorconfig` and Prettier.
 - To do: merge the plugin to `main`, and connect GitHub on claude.ai
   (the portal checks push access to the repository).
 
