@@ -168,6 +168,18 @@ codex mcp add netatmo-energy -- npx -y netatmo-energy-mcp
 copilot mcp add netatmo-energy -- npx -y netatmo-energy-mcp
 ```
 
+**Claude Code plugin.** Instead of `claude mcp add`, install the plugin: it
+adds the server plus a skill that teaches Claude how to diagnose a cold
+room, write heating reports and change the heating safely. Inside Claude
+Code:
+
+```text
+/plugin marketplace add christophe77/netatmo-energy-mcp
+/plugin install netatmo-energy@netatmo-energy-mcp
+```
+
+See [examples/claude-code](examples/claude-code/README.md#plugin).
+
 **VS Code + GitHub Copilot.** Add this to `.vscode/mcp.json`; note the
 `servers` key:
 

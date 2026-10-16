@@ -14,6 +14,9 @@ version needs two separate human approvals before it reaches users.
 1. **Prepare the release in a PR.**
    - Set `version` in `package.json` and both versions in `server.json`.
      Package validation fails if they differ.
+   - Set the same `version` in
+     `plugins/netatmo-energy/.claude-plugin/plugin.json`. Claude Code only
+     updates installed plugins when this version changes.
    - Move _Unreleased_ entries in `CHANGELOG.md` under the new version.
    - Run `pnpm build && pnpm docs:tools` if tools changed.
 2. **Merge to `main`** and wait for CI to pass.
