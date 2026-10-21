@@ -1,7 +1,7 @@
 # Distribution: MCP directories
 
 Where `netatmo-energy-mcp` is (or can be) listed, and how to submit.
-Researched 2026-10-08, updated 2026-10-16. **Nothing is submitted automatically.** A listing
+Researched 2026-10-08, updated 2026-10-21. **Nothing is submitted automatically.** A listing
 is only marked done here once it has been seen live.
 
 | Directory                                                                         | Status                                                                         | Method                                               | Requirements                                                                         |
@@ -12,6 +12,7 @@ is only marked done here once it has been seen live.
 | [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers)   | PR open ([#16527](https://github.com/punkpeye/awesome-mcp-servers/pull/16527)) | Pull request to README → _Home Automation_           | A passing Glama listing and its score badge (PRs without it are closed)              |
 | [mcpservers.org](https://mcpservers.org/submit) (feeds wong2/awesome-mcp-servers) | ✅ Listed                                                                      | Web form (free tier, ~2-week review)                 | —                                                                                    |
 | [mcp.so](https://mcp.so)                                                          | ✅ Listed                                                                      | GitHub issue "Submit: …" on `chatmcp/mcpso` (free)   | [Issue chatmcp/mcpso#5071](https://github.com/chatmcp/mcpso/issues/5071)             |
+| [mcprush](https://mcprush.com/christophe77/netatmo-energy-mcp)                    | ✅ Listed (grade A)                                                            | Indexed automatically                                | —                                                                                    |
 | [PulseMCP](https://www.pulsemcp.com)                                              | Automatic                                                                      | Submissions paused; it ingests the Official Registry | Official Registry listing                                                            |
 | [Cursor Directory](https://cursor.directory)                                      | Optional                                                                       | Submit on the site after GitHub login                | —                                                                                    |
 | [Claude plugin directory](https://claude.ai/directory/manage)                     | In review (submitted 2026-10-16, tracks `main`)                                | Developer portal → _Plugin bundle_ (free)            | Paid Claude plan to submit, public repository: see [below](#claude-plugin-directory) |

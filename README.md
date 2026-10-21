@@ -9,6 +9,8 @@
 ![Node.js >= 22.19](https://img.shields.io/badge/node-%3E%3D22.19-339933)
 [![Glama score](https://glama.ai/mcp/servers/christophe77/netatmo-energy-mcp/badges/score.svg)](https://glama.ai/mcp/servers/christophe77/netatmo-energy-mcp)
 
+[![Netatmo Energy MCP server on mcprush](https://mcprush.com/badge/netatmo-energy-mcp/card.svg)](https://mcprush.com/to/netatmo-energy-mcp?ref=badge)
+
 A **Netatmo MCP server** for **Netatmo smart thermostats and smart
 radiator valves**. It gives AI assistants structured access to your
 heating:
