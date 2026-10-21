@@ -9,6 +9,8 @@
 ![Node.js >= 22.19](https://img.shields.io/badge/node-%3E%3D22.19-339933)
 [![Note Glama](https://glama.ai/mcp/servers/christophe77/netatmo-energy-mcp/badges/score.svg)](https://glama.ai/mcp/servers/christophe77/netatmo-energy-mcp)
 
+[![Serveur Netatmo Energy MCP sur mcprush](https://mcprush.com/badge/netatmo-energy-mcp/card.svg)](https://mcprush.com/to/netatmo-energy-mcp?ref=badge)
+
 Un **serveur MCP Netatmo** pour les **thermostats intelligents et vannes
 thermostatiques Netatmo**. Il donne aux assistants IA un accès structuré
 à votre chauffage :
