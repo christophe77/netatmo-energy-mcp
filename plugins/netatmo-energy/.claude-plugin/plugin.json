@@ -1,6 +1,6 @@
 {
   "name": "netatmo-energy",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Netatmo Energy MCP server plus a skill for heating diagnostics, reports and safe schedule changes.",
   "author": {
     "name": "christophe77"
