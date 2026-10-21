@@ -34,7 +34,11 @@ interface ApiOptions {
   withoutThermostat?: boolean;
   /** Room 1000000002 runs 3 °C below a 20 °C setpoint, with one implausible spike. */
   anomalies?: boolean;
+  /** Adds an unnamed room without a device; its history is rejected with Netatmo error 21. */
+  emptyRoom?: boolean;
 }
+
+const EMPTY_ROOM_ID = '1000000009';
 
 /** Fake Netatmo Energy API following the behaviour observed live (docs/api-capabilities.md §11). */
 function api(opts: ApiOptions = {}) {
@@ -42,19 +46,26 @@ function api(opts: ApiOptions = {}) {
     const q = req.url.searchParams;
     switch (req.url.pathname) {
       case '/api/homesdata': {
-        const data = fixture<{ body: { homes: { modules: { type: string }[] }[] } }>(
-          'homesdata.json',
-        );
+        const data = fixture<{
+          body: { homes: { modules: { type: string }[]; rooms: { id: string; type: string }[] }[] };
+        }>('homesdata.json');
         if (opts.withoutThermostat) {
           const home = data.body.homes[0]!;
           home.modules = home.modules.filter((m) => m.type !== 'NATherm1');
         }
+        if (opts.emptyRoom) data.body.homes[0]!.rooms.push({ id: EMPTY_ROOM_ID, type: 'custom' });
         return json(data);
       }
       case '/api/homestatus':
         return json(fixture('homestatus.json'));
       case '/api/getroommeasure':
       case '/api/getmeasure': {
+        if (q.get('room_id') === EMPTY_ROOM_ID) {
+          return json(
+            { error: { code: 21, message: 'There is no relay thermostat device in this room.' } },
+            400,
+          );
+        }
         const scale = q.get('scale') ?? '1hour';
         const step = STEP[scale]!;
         const begin = Number(q.get('date_begin'));
@@ -440,6 +451,25 @@ describe('MCP analytics tools', () => {
     }
     expect(out.anomalies[0].severity).toBe('high');
     expect(out.caveats[0]).toMatch(/not confirmed faults/);
+  });
+
+  it('skips rooms without a device in multi-room analytics', async () => {
+    const { client } = await connect({ emptyRoom: true });
+    const skipped = `Skipped rooms without a device: ${EMPTY_ROOM_ID}.`;
+
+    const summary = await call(client, 'netatmo_get_heating_summary');
+    expect(summary.isError).toBeFalsy();
+    expect(summary.structuredContent.rooms).toHaveLength(4);
+    expect(summary.structuredContent.notes).toContain(skipped);
+
+    const compared = await call(client, 'netatmo_compare_rooms', { period: 'last_7d' });
+    expect(compared.isError).toBeFalsy();
+    expect(compared.structuredContent.notes).toContain(skipped);
+
+    const anomalies = await call(client, 'netatmo_detect_anomalies', { period: 'yesterday' });
+    expect(anomalies.isError).toBeFalsy();
+    expect(anomalies.structuredContent.rooms_analysed).toHaveLength(4);
+    expect(anomalies.structuredContent.notes).toContain(skipped);
   });
 
   it('finds nothing unusual in ordinary data and limits the range', async () => {

@@ -84,7 +84,7 @@ export class AnalyticsService {
     const notes: string[] = [];
     const range = resolveRange(input, 'yesterday', tz, this.now());
     const scale = chooseRoomScale(range, 'auto', notes);
-    const rooms = this.selectRooms(home, input);
+    const rooms = this.selectRooms(home, input, notes);
     const { data, requests } = await this.load(home, rooms, range, scale, opts);
     const analyses = data.map((d) => this.analyse(d, range, scale, tz));
 
@@ -142,7 +142,8 @@ export class AnalyticsService {
     const notes: string[] = [];
     const range = resolveRange(input, 'last_7d', tz, this.now());
     const scale = chooseRoomScale(range, 'auto', notes);
-    const { data, requests } = await this.load(home, home.rooms, range, scale, opts);
+    const selected = this.selectRooms(home, {}, notes);
+    const { data, requests } = await this.load(home, selected, range, scale, opts);
     const rooms = data.map((d) => this.analyse(d, range, scale, tz));
 
     const rank = (
@@ -195,7 +196,7 @@ export class AnalyticsService {
     const range = resolveRange(input, 'last_24h', tz, this.now(), ANOMALY_MAX_DAYS);
     const scale: Scale = '30min';
     const step = SCALE_SECONDS[scale];
-    const rooms = this.selectRooms(home, input);
+    const rooms = this.selectRooms(home, input, notes);
     const { data, requests } = await this.load(home, rooms, range, scale, opts);
 
     const all: AnomalyView[] = [];
@@ -253,7 +254,7 @@ export class AnalyticsService {
     return selectHome(toHomes((await this.client.homesData({}, opts)).body), homeId);
   }
 
-  private selectRooms(home: Home, input: AnalyticsInput): Room[] {
+  private selectRooms(home: Home, input: AnalyticsInput, notes: string[]): Room[] {
     if (input.room_id || input.room_name) {
       return [
         findRoom(home, {
@@ -263,7 +264,17 @@ export class AnalyticsService {
       ];
     }
     if (home.rooms.length === 0) throw new InvalidArgumentError(`${home.name} has no rooms.`);
-    return home.rooms;
+    // Netatmo rejects room history for a room without a device (error 21), which would fail
+    // the whole multi-room request.
+    const rooms = home.rooms.filter((r) => r.moduleIds.length > 0);
+    const skipped = home.rooms.filter((r) => r.moduleIds.length === 0);
+    if (rooms.length === 0) {
+      throw new InvalidArgumentError(`${home.name} has no rooms with a device.`);
+    }
+    if (skipped.length > 0) {
+      notes.push(`Skipped rooms without a device: ${skipped.map((r) => r.name).join(', ')}.`);
+    }
+    return rooms;
   }
 
   /** Fetch temperature + setpoint for each room in one request per room (sequential). */

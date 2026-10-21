@@ -17,6 +17,13 @@ minor versions may contain breaking changes; they are always listed.
 - `PRIVACY.md`: privacy policy for the package, the plugin and a
   self-hosted remote server.
 
+### Fixed
+
+- `netatmo_get_heating_summary`, `netatmo_compare_rooms` and
+  `netatmo_detect_anomalies` failed for the whole home when it had a room
+  without a device (Netatmo error 21). Such rooms are now skipped and listed
+  in `notes`.
+
 ## [0.3.1] - 2026-10-10
 
 ### Fixed
