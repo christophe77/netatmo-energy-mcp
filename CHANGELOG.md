@@ -7,6 +7,8 @@ minor versions may contain breaking changes; they are always listed.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-21
+
 ### Added
 
 - Claude Code plugin (`plugins/netatmo-energy`, listed in the repository's
@@ -180,7 +182,8 @@ First public version: a read-only MCP server for Netatmo Energy.
 - Tested on Netatmo Smart Thermostat (`NATherm1`), Smart Radiator Valves
   (`NRV`) and Relay (`NAPlug`). OpenTherm devices are untested.
 
-[Unreleased]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/christophe77/netatmo-energy-mcp/compare/v0.1.0...v0.2.0
