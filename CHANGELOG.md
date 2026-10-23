@@ -7,6 +7,13 @@ minor versions may contain breaking changes; they are always listed.
 
 ## [Unreleased]
 
+### Fixed
+
+- `resources/list` failed with a protocol error before `login`, because listing
+  the per-home resources needs Netatmo access. It now returns `netatmo://homes`
+  alone, so clients and directories (Glama's checks) can connect without an
+  account.
+
 ## [0.3.2] - 2026-10-21
 
 ### Added

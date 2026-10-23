@@ -65,7 +65,15 @@ export function registerResources(server: McpServer, service: EnergyService): vo
       `home-${suffix}`,
       new ResourceTemplate(`netatmo://homes/{homeId}/${suffix}`, {
         list: async (ctx) => {
-          const { homes } = await service.listHomes(signal(ctx));
+          // Listing must work before login (clients and directories call it on connect);
+          // without access the per-home resources are simply not listed.
+          let homes;
+          try {
+            ({ homes } = await service.listHomes(signal(ctx)));
+          } catch (error) {
+            if (error instanceof AppError) return { resources: [] };
+            throw error;
+          }
           return {
             resources: homes.map((h) => ({
               uri: `netatmo://homes/${encodeURIComponent(h.id)}/${suffix}`,

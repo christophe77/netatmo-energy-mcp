@@ -339,6 +339,8 @@ describe('MCP server', () => {
       code: 'AUTH_REQUIRED',
       hint: expect.stringContaining('netatmo-energy-mcp login'),
     });
+    const { resources } = await client.listResources();
+    expect(resources.map((r) => r.uri)).toEqual(['netatmo://homes']);
   });
 
   it('exposes JSON resources and resource templates', async () => {
