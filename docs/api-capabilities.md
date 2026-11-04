@@ -259,6 +259,9 @@ single user. Read literally, the per-app burst limit would then be
 client therefore uses a conservative local limiter, honours
 `Retry-After`, and caps the number of requests one tool call may make.
 
+Netatmo announced lower limits for polling-based integrations from
+2027-03-01, without figures yet. See [§12](#12-webhooks-and-the-2027-rate-limit-change).
+
 ## 8. Error codes
 
 | HTTP      | Code                | Meaning                                     | Client behaviour                            |
@@ -343,3 +346,53 @@ Other details:
 - `heating_power_request` was reported for every room (values seen: 0 and
   100).
 - `boiler_status` was `true` while one room requested 100 %.
+
+## 12. Webhooks and the 2027 rate-limit change
+
+Checked on dev.netatmo.com on 2026-11-04, after Netatmo's announcement
+email to developers.
+
+**Announcement.** From **2027-03-01**, Netatmo plans to reduce the rate
+limits for polling-based integrations and asks developers to move to
+webhooks for supported products. The new limits are not published yet:
+the guidelines page still shows the values in §7. **UNCERTAIN** until
+Netatmo publishes them.
+
+**Coverage.** The new webhook service is live for supported gateways.
+Heating & Cooling with an `NAPlug` gateway and the `read_thermostat`
+scope is listed as supported, so installations with a Netatmo thermostat
+and valves are covered. **VERIFIED.**
+
+**How it works** (**VERIFIED**):
+
+| Topic        | Behaviour                                                                                                                                                                |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Registration | One endpoint URL per app, set in the app settings and taken into account when a user authorizes the app. Per-user URLs through `POST /webhooks/v1` or `/api/addwebhook`. |
+| Delivery     | HTTP POST with a JSON body, usually within seconds. Up to 3 retries. Order not guaranteed, duplicates possible; `sequence_id` orders device state changes.               |
+| Response     | `200 OK` within 5 s. Repeated failures suspend delivery for up to 10 minutes, and events from that time are lost.                                                        |
+| Signature    | `X-Netatmo-secret` header: lowercase hex HMAC-SHA256 of the raw body, keyed with the app's client secret.                                                                |
+| Event types  | `webhook_activation`, `webhook_deletion`, `topology_changed`, `home_event_changed` (for example a schedule change), `device_event` (state change of modules).            |
+
+**Not documented for Energy.** The page shows `device_event` payloads
+for Legrand and security products only. Which fields thermostats, valves
+and relays send is **UNCERTAIN**: in particular room temperature,
+setpoint, `heating_power_request` and boiler status, which are what a
+collector would need.
+
+**What it means for this project:**
+
+- **Local server.** It runs over stdio on the user's machine, with no
+  public URL, and only while an MCP client runs it. It cannot receive
+  webhooks and keeps calling the API on demand. Webhooks don't replace
+  `getroommeasure` or `homesdata` either. Once the new limits are
+  published, lower the limiter defaults (§7) to match.
+- **Remote server.** The Worker has a public HTTPS URL and already
+  stores the app's client secret, which the signature check needs. It
+  could keep `homestatus`-like state current from events instead of
+  calling the API for every question.
+- **Snapshot collector** ([ADR-0011](adr/0011-future-snapshot-collector.md)).
+  It was designed to poll `homestatus` every 5 minutes, which is the
+  kind of polling Netatmo wants to reduce. If Energy `device_event`
+  payloads carry room temperatures, setpoints and heating demand, a
+  webhook receiver would be the better source. Capture real Energy
+  payloads before deciding.
