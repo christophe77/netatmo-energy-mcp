@@ -45,6 +45,7 @@ See [ADR-0013](adr/0013-remote-hosted-service.md) and [ADR-0014](adr/0014-remote
 - Device health report: battery trends, unreachable modules, RF signal
 - Optional CSV/JSON export of history to a local file
 - Live-API findings folded back into [api-capabilities.md](api-capabilities.md)
+- Before 2027-03-01: lower the rate-limiter defaults once Netatmo publishes its reduced polling limits, and capture real Energy webhook payloads to decide whether the remote server and a future collector should use webhooks ([api-capabilities §12](api-capabilities.md#12-webhooks-and-the-2027-rate-limit-change))
 
 ## v0.4: Weather integration (Open-Meteo)
 
